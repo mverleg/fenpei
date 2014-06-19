@@ -11,16 +11,16 @@
 
 from time import time, sleep
 from random import sample
-from schedule.job import Job, status_names, RUNNING
-from settings import temp_dir
+from job import Job, status_names, RUNNING
 from collections import defaultdict
 from argparse import ArgumentParser
 from os import remove
 from os.path import split
 from numpy import ceil
-from schedule.shell import run_cmds_on
+from mpl import show
+from shell import run_cmds_on
 from utility.group_by import group_by
-from plot.mympl import show
+from settings import temp_dir
 
 
 class Queue(object):
@@ -308,7 +308,7 @@ class Queue(object):
     
     ''' restart the jobs aren't running or succesfully completed '''
     def restart(self, *args, **kwargs):
-        from schedule.job import RUNNING, COMPLETED
+        from job import RUNNING, COMPLETED
         restart_jobs = []
         for job in self.jobs:
             job.find_status()
