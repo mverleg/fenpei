@@ -17,7 +17,7 @@ from argparse import ArgumentParser
 from os import remove
 from os.path import split
 from numpy import ceil
-from mpl import show
+from bardeen.mpl import show
 from shell import run_cmds_on
 from utility.group_by import group_by
 from settings import temp_dir

@@ -1,10 +1,10 @@
 
 from re import match
+from fenpei.shell import run_cmds
 from settings import calc_dir
 from time import time
 from os import remove
 from os.path import join, exists, split
-from schedule.shell import run_cmds
 from utility.filesys import link_else_copy, mkdirp
 
 

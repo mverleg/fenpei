@@ -8,8 +8,8 @@
     - restart failed
 '''
 
-from schedule.queue import Queue
-from schedule.shell import run_cmds
+from fenpei.queue import Queue
+from fenpei.shell import run_cmds
 from os.path import split
 
 

@@ -11,7 +11,7 @@
 from bs4 import BeautifulSoup
 from requests import get
 from re import match
-from schedule.queue import Queue
+from fenpei.queue import Queue
 
 
 class DICP_Queue(Queue):

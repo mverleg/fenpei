@@ -1,14 +1,12 @@
 
-from schedule.job import Job
 from os.path import exists
 from numpy import ndarray
 from pyfann.libfann import ERRORFUNC_TANH, SIGMOID_SYMMETRIC
-from fitting.visualize_results import plot_errors_points, bar_error_minima,\
-    plot_example_fits
+from fitting.visualize_results import plot_errors_points, bar_error_minima, plot_example_fits
 from utility.data_train_test import split_train_test
+from fenpei.job import Job
 
 
-''' only meant as base class for neural nets '''
 class ShefJob(Job):
     
     def __new__(cls, *args, **kwargs):
