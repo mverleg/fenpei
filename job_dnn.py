@@ -4,8 +4,8 @@ from settings import calc_dir, fortran_dir, python_dir
 from numpy import ndarray
 from re import compile
 from os.path import isfile
-from schedule.shell import run_cmds
-from schedule.job_nn import NN_Job
+from fenpei.shell import run_cmds
+from fenpei.job_nn import NN_Job
 from fitting.check import dnn_check
 from utility.load_data import write_array_to_columns
 

@@ -4,7 +4,7 @@ from settings import python_dir
 from numpy import ndarray
 from re import compile
 from pyfann.libfann import ERRORFUNC_TANH, SIGMOID_SYMMETRIC
-from schedule.job_nn import NN_Job
+from fenpei.job_nn import NN_Job
 from utility.load_data import write_array_to_columns
 from fitting.check import fann_check
 

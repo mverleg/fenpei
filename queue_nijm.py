@@ -5,7 +5,7 @@
 
 from bs4 import BeautifulSoup
 from requests import get
-from queue import Queue
+from fenpei.queue import Queue
 
 
 class Nijm_Queue(Queue):

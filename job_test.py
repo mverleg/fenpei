@@ -1,7 +1,7 @@
 
-from schedule.job import Job, RUNNING
+from fenpei.job import Job, RUNNING
 from settings import fortran_dir
-from schedule.shell import run_cmds, run_cmds_on
+from fenpei.shell import run_cmds, run_cmds_on
 
 
 class Test_Job(Job):

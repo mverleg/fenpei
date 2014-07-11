@@ -1,5 +1,5 @@
 
-from schedule.job import Job
+from fenpei.job import Job
 from os.path import exists
 from numpy import ndarray
 from pyfann.libfann import ERRORFUNC_TANH, SIGMOID_SYMMETRIC
