@@ -13,7 +13,6 @@
 
 	:: comment: make references
 """
-# todo: weights and processor count shouldn't be comparable, just proportional, so rescale weights to match capacity (e.g. 2/10 processors should get 20% of weight in jobs)
 
 from re import match
 from bardeen.sys import mkdirp
@@ -239,7 +238,6 @@ class Job(object):
 					self._log('you are trying to clean up a job that is running or completed; \
 						if you are sure you want to do this, use -f')
 					exit()
-		# todo: for prepare I assume that I have a mounted disc, right? so either don't assume that, or also assume it here
 		cmds = [
 			'/bin/rm -r %s &> /dev/null' % self.directory,
 		]
@@ -257,15 +255,15 @@ class Job(object):
 		return None
 
 	@classmethod
-	def summary(cls, jobs, *args, **kwargs):
+	def summary(cls, results, jobs, *args, **kwargs):
 		"""
 			[to be refactored]
 
 			(class method, called once for all jobs)
 
-			:param jobs: list of jobs which are of the correct type (this class or group_cls
+			:param results: list that contains the result dictionary for any jobs that don't return None;
+			the ``'job'`` item is set to the applicable job
+			:param jobs: list of jobs which are of the correct type (this class or group_cls)
 		"""
-		# todo: convert to get results instead of jobs (or both)
-		pass
 
 

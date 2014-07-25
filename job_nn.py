@@ -39,15 +39,8 @@ class NNJob(Job):
 		return True
 
 	@classmethod
-	def summary(cls, jobs, *args, **kwargs):
-		''' get the results that return '''
-		results = []
-		complete_jobs = []
-		for job in jobs:
-			result = job.result()
-			if result:
-				complete_jobs.append(job)
-				results.append(result)
+	def summary(cls, results, *args, **kwargs):
+		complete_jobs = [result['job'] for result in results]
 		''' visualization functions '''
 		if len(results):
 			plot_errors_points(complete_jobs, results)

@@ -133,6 +133,10 @@ class Queue(object):
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
 			distribute jobs favourably by means of kind-of-Monte-Carlo (only favourable moves)
+
+			:param jobs: (optional) the jobs to be distributed; use self.jobs if not provided
+			:param max_reject_spree: (optional) stopping criterion; stop when this many unfavourable moves tried in a row
+			:return: distribution, a dictionary with node *indixes* as keys and lists of jobs on that node as values
 		"""
 		if not len(self.slots) > 0:
 			self.node_availability()
@@ -292,6 +296,9 @@ class Queue(object):
 		cmd = 'nohup python \'%s\' &> out.log &' % basename(filepath)
 		return self.run_cmd(job, cmd)
 
+	class CmdException(Exception):
+		""" an external (e.g. Popen shell script) could not be run """
+
 	def run_cmd(self, job, cmd):
 		"""
 			start an individual job by means of a shell command
@@ -300,7 +307,6 @@ class Queue(object):
 			:param cmd: shell commands to run (should include nohup and & as appropriate)
 			:return: process id (str)
 		"""
-		# todo: use this for offspring queues
 		assert job.directory
 		cmds = [
 			'cd \'%s\'' % job.directory,
@@ -309,8 +315,7 @@ class Queue(object):
 		]
 		outp = run_cmds_on(cmds, node = job.node, queue = self)
 		if not outp:
-			# todo: special exception
-			raise Exception('job %s could not be started' % self)
+			raise self.CmdException('job %s could not be started' % self)
 		return str(int(outp[-1]))
 
 	def stop_job(self, node, pid):

@@ -10,6 +10,8 @@ from fenpei.queue import Queue
 
 class NijmQueue(Queue):
 
+	QSUB_GENERAL_NAME = 'thchem'
+
 	def all_nodes(self):
 		if not super(NijmQueue, self).all_nodes():
 			return
@@ -20,46 +22,22 @@ class NijmQueue(Queue):
 			tds = tr.find_all('td')
 			print tds[1].text.lower()
 		exit()
+		# todo: continue
 		#self.nodes.append(fnd.groups(0)[0])
 		self.nodes = sorted(self.nodes)
 		self.nodes = [self.short_node_name(node) for node in self.nodes]
 		self.log('%d nodes found' % len(self.nodes))
 		self.log('nodes: %s' % ', '.join(self.nodes), level = 2)
 
-	def short_node_name(self, name):
-		if 'compute' in name:
-			return 'c' + name.replace('compute-', '').replace('.local', '')
-		return name
-
 	def node_availability(self):
+		raise NotImplementedError('this should not be implemented for %s because the qsub-queue does the distributing' % self.__class__)
+
+	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
-			check the processor use of all nodes
+			let qsub do the distributing by placing everything in general queue
 		"""
-		if self.load_nodes():
-			return False
-		if not len(self.nodes):
-			self.log('no nodes yet; calling all_nodes()', level = 2)
-			self.all_nodes()
-			if not len(self.nodes):
-				self.log('no nodes found; no availability checked', level = 2)
-				return
-		self.slots = []
-		self.log('checking node availability', level = 1)
-		for node in self.nodes:
-			outps = run_cmds_on(cmds = ['grep \'model name\' /proc/cpuinfo | wc -l', 'uptime'], node = node, queue = self)
-			if len(outps) == 2:
-				''' one slot for every 100% processor available '''
-				proc_count = int(outps[0])
-				load_1min = float(outps[1].split()[-3].replace(',', ''))
-				self.slots.append(max(proc_count - load_1min, 0))
-				self.log('%2d slots assigned to %6s - 1min cpu %4d%% on %d processors' % (round(self.slots[-1]), self.short_node_name(node), 100 * load_1min, proc_count), level = 2)
-			else:
-				''' not accessible for some reason '''
-				self.log('%s not accessible' % node)
-				self.nodes.remove(node)
-		self.log('found %d idle processors on %d nodes' % (sum(self.slots), len(self.nodes)))
-		self.save_nodes()
-		return True
+		self._log('call to distribute %d jobs ignored; qsub will do distribution' % len(jobs))
+		self.distribution = {0: jobs}
 
 	def processes(self, node):
 		"""
@@ -91,19 +69,25 @@ class NijmQueue(Queue):
 				self.process_list[node].append(ps_dict)
 		return self.process_list[node]
 
-	def run_job(self, node, filepath):
+	def run_cmd(self, job, cmd):
 		"""
-			start an individual job, specified by a Python file
+			start an individual job by means of a shell command
+
+			:param job: the job that's being started this way
+			:param cmd: shell commands to run (should include nohup and & as appropriate)
+			:return: process id (str)
 		"""
-		directory, filename = split(filepath)
+		# todo: use qsub
+		raise NotImplementedError('qsub, if that ever happens')
+		assert job.directory
 		cmds = [
-			'cd \'%s\'' % directory,
-			'nohup python \'%s\' &> out.log &' % filename,
-			'echo "$\!"'
+			'cd \'%s\'' % job.directory,
+			cmd,
+			'echo "$\!"' # pid
 		]
-		outp = run_cmds_on(cmds, node = node, queue = self)
+		outp = run_cmds_on(cmds, node = job.node, queue = self)
 		if not outp:
-			raise Exception('job %s could not be started' % self)
+			raise self.C ('job %s could not be started' % self)
 		return str(int(outp[-1]))
 
 

@@ -54,19 +54,19 @@ class LocalQueue(Queue):
 			})
 		return self.process_list[node]
 
-	def run_job(self, node, filepath):
+	def run_cmd(self, job, cmd):
 		"""
-			start an individual job, specified by a Python file
+			see Queue.run_cmd(), but run everything on local machine
 		"""
-		directory, filename = split(filepath)
+		assert job.directory
 		cmds = [
-			'cd \'%s\'' % directory,
-			'nohup python \'%s\' &> result.out &' % filename,
-			'echo "$\!"'
+			'cd \'%s\'' % job.directory,
+			cmd,
+			'echo "$\!"' # pid
 		]
 		outp = run_cmds(cmds, queue = self)
 		if not outp:
-			raise Exception('job %s could not be started' % self)
+			raise self.CommandException('job %s could not be started' % self)
 		return str(int(outp[-1]))
 
 	def stop_job(self, node, pid):
