@@ -10,10 +10,10 @@
 from tempfile import gettempdir
 from getpass import getuser
 from os import makedirs
-from os.path import join, dirname
+from os.path import join, dirname, abspath
 
 
-BASE_DIR = (dirname(__file__))
+BASE_DIR = abspath(dirname(__file__))
 
 TMP_DIR = join(gettempdir(), getuser())
 try:

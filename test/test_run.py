@@ -1,13 +1,12 @@
 
-'''
+"""
 	test feinpei
-'''
+"""
 
 from fenpei.test.job_test import TestJob
 from fenpei.queue_local import LocalQueue
 
 
-batch = 'coord_dnn'
 def test_jobs():
 
 	jobs = []
@@ -21,9 +20,9 @@ def test_jobs():
 			weight = int(N / 10) + 1,
 		))
 
-	queue_cluster = LocalQueue()
-	queue_cluster.add_jobs(jobs)
-	return queue_cluster
+	queue = LocalQueue()
+	queue.add_jobs(jobs)
+	return queue
 
 if __name__ == '__main__':
 	queue = test_jobs()

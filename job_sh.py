@@ -12,11 +12,13 @@
 
 from collections import Mapping
 from os import listdir
-from os.path import join, basename, isdir, isfile
+from os.path import join, basename, isdir, isfile, dirname, exists
 from shutil import copyfile
 from bardeen.system import mkdirp, link_else_copy
 from fenpei.job import Job
 from fenpei.shell import run_shell
+from datetime import datetime
+from time import time
 
 
 class ShJob(Job):
@@ -33,17 +35,19 @@ class ShJob(Job):
 			for other parameters, see :ref: Job
 
 			files will be copied if bool(files) is True (for substritutions), otherwise it will be attempted to
-			hard-link them (use True to prevent that with no substitutions); directories can not have substitutions;
-			if you use a directory, /path/ copies files from it and /path copies the directory with files
+			hard-link them (use True to prevent that with no substitutions); if you use a directory, /path/ copies
+			files from it and /path copies the directory with files; directory substitutions apply to contained files
 		"""
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
 		super(ShJob, self).__init__(name = name, weight = weight, batch_name = batch_name)
+		timestr = datetime.now().strftime('%Y-%m-%d %H:%M') + ' (%d)' % time()
 		for filepath, subst in substitutions.items():
 			if isinstance(subst, Mapping):
 				subst['name'] = name
+				subst['now'] = timestr
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
-		self._check_files()
+		self._fix_files()
 
 	@classmethod
 	def get_files(cls):
@@ -58,6 +62,9 @@ class ShJob(Job):
 	def run_file(cls):
 		"""
 			:return: the path to the file which executes the job; should be in get_files()
+
+			files can be either string paths or tuples of (directory, pathname); in the later case pathname will be
+			copied (including directories), instead of assuming only the file is to be copied
 		"""
 		raise NotImplementedError()
 
@@ -66,34 +73,49 @@ class ShJob(Job):
 			file was not found exception
 		"""
 
-	def _check_files(self):
+	def _fix_files(self):
 		"""
 			check that self.files is filled with valid values (files exist etc)
 
+			turns all string filepaths into tuples of directory and filename
+
+			expands all directories into lists of files
+
 			:raise ShJob.FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
 		"""
-		for filepath, subst in self.files.items():
-			if isdir(filepath):
-				assert bool(subst) is False
-			elif isfile(filepath):
-				if not isinstance(subst, Mapping):
-					self.files[filepath] = bool(subst)
+		def expand_dir(pre_path, post_path):
+			"""
+				expand a tuple (predir, postdir) into all the files in that directory
+			"""
+			fullpath = join(pre_path, post_path)
+			subs = []
+			if isdir(fullpath):
+				for subpath in listdir(fullpath):
+					subs.extend(expand_dir(pre_path = pre_path,
+						post_path = join(fullpath, subpath).lstrip(pre_path)))
+				return subs
 			else:
+				return [(pre_path, post_path)]
+
+		newfiles = {}
+		for filepath, subst in self.files.items():
+			if not isinstance(filepath, tuple) and not isinstance(filepath, list):
+				""" change string path into tuple """
+				filepath = dirname(filepath), basename(filepath)
+			for path_pair in expand_dir(*filepath):
+				""" recursively expand a directory into all it's files """
+				newfiles[path_pair] = subst
+			if not exists(join(*filepath)):
 				raise self.FileNotFound('%s is not a valid file or directory' % filepath)
+		self.files = newfiles
 
 	def is_prepared(self):
 		"""
 			see if prepared by checking the existence of every file
 		"""
-		for filepath in self.files.keys():
-			if isdir(filepath):
-				for filesubpath in listdir(filepath):
-					# todo: doesn't work with more than one level of directories
-					if not isfile(join(self.directory, basename(filepath), filesubpath)):
-						return False
-			else:
-				if not isfile(join(self.directory, basename(filepath))):
-					return False
+		for (filedir, filename) in self.files.keys():
+			if not isfile(join(self.directory, filename)):
+				return False
 		if not isfile(self.run_file()):
 			return False
 		return True
@@ -102,26 +124,22 @@ class ShJob(Job):
 		"""
 			prepares the job for execution by copying or linking all the files, and substituting values where applicable
 		"""
-		self._check_files()
+		self._fix_files()
 		super(ShJob, self).prepare(*args, **kwargs)
-		for filepath, subst in self.files.items():
-			if bool(self.files):
+		for (filedir, filename), subst in self.files.items():
+			filepath = join(filedir, filename)
+			mkdirp(join(self.directory, dirname(filename)))
+			if bool(subst):
 				""" copy files and possibly substitute """
 				if isinstance(subst, Mapping):
 					with open(filepath, 'r') as fhr:
-						with open(join(self.directory, basename(filepath)), 'w+') as fhw:
+						with open(join(self.directory, filename), 'w+') as fhw:
 							fhw.write(fhr.read() % subst)
 				else:
-					copyfile(filepath, join(self.directory, basename(filepath)))
+					copyfile(filepath, join(self.directory, filename))
 			else:
 				""" hard-link files (directories recursively) if possible """
-				if isdir(filepath):
-					mkdirp(join(self.directory, basename(filepath)))
-					# todo: does this work for more than one level of directories? does that copy? (should link)
-					for filesubpath in listdir(filepath):
-						link_else_copy(filepath, join(self.directory, basename(filepath), filesubpath))
-				else:
-					link_else_copy(filepath, join(self.directory, basename(filepath)))
+				link_else_copy(filepath, join(self.directory, filename))
 		if isfile(join(self.directory, self.run_file())):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:
