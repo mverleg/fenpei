@@ -10,7 +10,7 @@
 """
 
 from os.path import join, exists, split
-from bardeen.sys import mkdirp, link_else_copy
+from bardeen.system import mkdirp, link_else_copy
 from fenpei.job import Job
 from settings import CALC_DIR
 

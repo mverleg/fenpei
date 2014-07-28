@@ -15,7 +15,7 @@
 """
 
 from re import match
-from bardeen.sys import mkdirp
+from bardeen.system import mkdirp
 from fenpei.shell import run_cmds
 from time import time
 from os import remove
@@ -235,8 +235,8 @@ class Job(object):
 		if self.is_running() or self.is_complete():
 			if not self.queue is None:
 				if not self.queue.force:
-					self._log('you are trying to clean up a job that is running or completed; \
-						if you are sure you want to do this, use -f')
+					self._log('you are trying to clean up a job that is running or completed; ' + \
+					    'if you are sure you want to do this, use -f')
 					exit()
 		cmds = [
 			'/bin/rm -r %s &> /dev/null' % self.directory,
@@ -257,7 +257,7 @@ class Job(object):
 	@classmethod
 	def summary(cls, results, jobs, *args, **kwargs):
 		"""
-			[to be refactored]
+			show some sort of summary for all jobs of this class (implementation as you see fit)
 
 			(class method, called once for all jobs)
 

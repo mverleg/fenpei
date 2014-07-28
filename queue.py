@@ -11,15 +11,15 @@
 
 from time import time, sleep
 from random import sample
+from bardeen.collection import group_by
 from job import Job
 from collections import defaultdict
 from argparse import ArgumentParser
 from os import remove
-from os.path import split, basename
+from os.path import basename
 from numpy import ceil
 from bardeen.mpl import show
 from shell import run_cmds_on
-from utility.group_by import group_by
 from settings import TMP_DIR
 
 
@@ -452,10 +452,10 @@ class Queue(object):
 		"""
 			summarize the results of all jobs, grouped by type
 		"""
-		# todo: why doesn't this just pass the results instead of the jobs?
 		for cls, jobs in group_by(self.jobs, lambda job: job.group_cls or job.__class__).items():
 			self._log('summary for %s' % cls.__name__)
-			cls.summary(jobs = jobs, *args, **kwargs)
+			results = [job.result() for job in jobs]
+			cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
 		show()
 
 	def run_argv(self):

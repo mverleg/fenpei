@@ -14,7 +14,7 @@ from collections import Mapping
 from os import listdir
 from os.path import join, basename, isdir, isfile
 from shutil import copyfile
-from bardeen.sys import mkdirp, link_else_copy
+from bardeen.system import mkdirp, link_else_copy
 from fenpei.job import Job
 from fenpei.shell import run_shell
 
@@ -38,6 +38,9 @@ class ShJob(Job):
 		"""
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
 		super(ShJob, self).__init__(name = name, weight = weight, batch_name = batch_name)
+		for filepath, subst in substitutions.items():
+			if isinstance(subst, Mapping):
+				subst['name'] = name
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
 		self._check_files()
@@ -49,14 +52,14 @@ class ShJob(Job):
 
 			substitutions for non-static files should be supplied to the constructor
 		"""
-		return NotImplementedError()
+		raise NotImplementedError()
 
 	@classmethod
 	def run_file(cls):
 		"""
 			:return: the path to the file which executes the job; should be in get_files()
 		"""
-		return NotImplementedError()
+		raise NotImplementedError()
 
 	class FileNotFound(OSError):
 		"""
@@ -76,7 +79,7 @@ class ShJob(Job):
 				if not isinstance(subst, Mapping):
 					self.files[filepath] = bool(subst)
 			else:
-				raise self.FileNotFound('%s not a valid file or directory' % filepath)
+				raise self.FileNotFound('%s is not a valid file or directory' % filepath)
 
 	def is_prepared(self):
 		"""
@@ -119,11 +122,12 @@ class ShJob(Job):
 						link_else_copy(filepath, join(self.directory, basename(filepath), filesubpath))
 				else:
 					link_else_copy(filepath, join(self.directory, basename(filepath)))
-		if isfile(self.run_file()):
+		if isfile(join(self.directory, self.run_file())):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:
 			raise self.FileNotFound('.run_file() "%s" not found after preparation; make sure it\'s origin is in \
 				.get_files() or in __init__ substitutions argument' % self.run_file())
+		return True
 
 	def start(self, node, *args, **kwargs):
 		"""
@@ -131,7 +135,7 @@ class ShJob(Job):
 		"""
 		self._start_pre(*args, **kwargs)
 		cmd = 'nohup ./%s &> out.log &' % self.run_file()
-		pid = self.queue.run_cmd(node = node, cmd = cmd)
+		pid = self.queue.run_cmd(job = self, cmd = cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
 

@@ -1,25 +1,27 @@
 
 '''
-	use scheduler to calculate a lot of networks to compare
+	test feinpei
 '''
 
-from fenpei.job_dnn import DNN_Job
-from fenpei.queue_dicp import DICP_Queue
-from utility.load_data import read_columns_to_array
-from utility.misc import name_weight
+from fenpei.test.job_test import TestJob
+from fenpei.queue_local import LocalQueue
 
 
 batch = 'coord_dnn'
 def test_jobs():
 
 	jobs = []
-	params = set(k**1.3 for k in range(5, 20))
-	print params
+	params = set(int(k**1.5) for k in range(5, 20))
+	params.add(1)
 
-	for param in params:
-		jobs.append(TestJob(name = 'normal.%s' % (name % rep), weight = weight, data = normal, layers = size, batch_name = batch))
+	for N in params:
+		jobs.append(TestJob(
+			name = 'test%d' % N,
+			substitutions = {TestJob.get_files()[0]: {'N': N}},
+			weight = int(N / 10) + 1,
+		))
 
-	queue_cluster = DICP_Queue()
+	queue_cluster = LocalQueue()
 	queue_cluster.add_jobs(jobs)
 	return queue_cluster
 
