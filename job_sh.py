@@ -115,6 +115,7 @@ class ShJob(Job):
 		"""
 		for (filedir, filename) in self.files.keys():
 			if not isfile(join(self.directory, filename)):
+				self._log('%s is not prepared because %s (and possibly more) are missing' % (self.name, filename), 3)
 				return False
 		if not isfile(self.run_file()):
 			return False
@@ -126,15 +127,25 @@ class ShJob(Job):
 		"""
 		self._fix_files()
 		super(ShJob, self).prepare(*args, **kwargs)
+		if self.is_prepared():
+			return False
 		for (filedir, filename), subst in self.files.items():
 			filepath = join(filedir, filename)
+			if exists(join(self.directory, filename)):
+				self._log('%s is not prepared but already has file %s' % (self.name, filepath), 2)
+				break
 			mkdirp(join(self.directory, dirname(filename)))
 			if bool(subst):
 				""" copy files and possibly substitute """
 				if isinstance(subst, Mapping):
 					with open(filepath, 'r') as fhr:
 						with open(join(self.directory, filename), 'w+') as fhw:
-							fhw.write(fhr.read() % subst)
+							try:
+								fhw.write(fhr.read() % subst)
+							except KeyError, err:
+								self._log('missing key "%s" in substitution of "%s"; job not prepared' % (str(err).strip('\''), filename))
+								self.cleanup()
+								return False
 				else:
 					copyfile(filepath, join(self.directory, filename))
 			else:
@@ -143,8 +154,8 @@ class ShJob(Job):
 		if isfile(join(self.directory, self.run_file())):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:
-			raise self.FileNotFound('.run_file() "%s" not found after preparation; make sure it\'s origin is in \
-				.get_files() or in __init__ substitutions argument' % self.run_file())
+			raise self.FileNotFound(('.run_file() "%s" not found after preparation; make sure it\'s origin is in ' +
+			    '.get_files() or in __init__ substitutions argument') % self.run_file())
 		return True
 
 	def start(self, node, *args, **kwargs):

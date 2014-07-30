@@ -19,7 +19,7 @@ from bardeen.system import mkdirp
 from fenpei.shell import run_cmds
 from time import time
 from os import remove
-from os.path import join
+from os.path import join, abspath
 from settings import CALC_DIR
 
 
@@ -44,7 +44,7 @@ class Job(object):
 			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
 		"""
 		assert match('^\w[\w\._-]*$', name)
-		self.name = name
+		self.name = abspath(name)
 		self.weight = weight
 		self.cluster = None
 		self.batch_name = batch_name
