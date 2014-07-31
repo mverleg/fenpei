@@ -44,7 +44,6 @@ class Job(object):
 			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
 		"""
 		assert match('^\w[\w\._-]*$', name)
-		self.name = abspath(name)
 		self.weight = weight
 		self.cluster = None
 		self.batch_name = batch_name
