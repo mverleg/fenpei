@@ -444,7 +444,8 @@ class Queue(object):
 					self._log('status monitoring terminated; no more running jobs')
 					break
 
-				sleep(delay)
+				sleep(datetime.now().second + datetime.now().microsecond / 1e6 + .01)
+
 			except KeyboardInterrupt:
 				self._log('status monitoring terminated by user')
 				break
