@@ -12,6 +12,8 @@
 from time import time, sleep
 from random import sample
 from bardeen.collection import group_by
+from bardeen.inout import reprint
+from datetime import datetime
 from job import Job
 from collections import defaultdict
 from argparse import ArgumentParser
@@ -421,19 +423,28 @@ class Queue(object):
 		status_count, status_list = self.get_status()
 		self.show_status(status_count, status_list)
 
-	def continuous_status(self):
+	def continuous_status(self, delay = 5):
 		"""
 			keep refreshing status until ctrl+C
 		"""
 		self._log('monitoring status; use cltr+C to terminate')
+		lines = len(Job.status_names) + 1
+		print '\n' * lines
 		while True:
 			try:
 				status_count, status_list = self.get_status()
-				self.show_status(status_count, status_list)
+
+				txt = '%s - status for %d jobs:' % (datetime.now().strftime('%H:%M:%S'), len(self.jobs))
+				for status_nr in status_list.keys():
+					job_names = ', '.join(str(job) for job in status_list[status_nr])
+					txt += '\n %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...')
+				reprint(txt, lines)
+
 				if not status_count[Job.RUNNING]:
 					self._log('status monitoring terminated; no more running jobs')
 					break
-				sleep(5)
+
+				sleep(delay)
 			except KeyboardInterrupt:
 				self._log('status monitoring terminated by user')
 				break
