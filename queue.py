@@ -444,6 +444,7 @@ class Queue(object):
 					self._log('status monitoring terminated; no more running jobs')
 					break
 
+				print 'slee[ing for %fs' % (datetime.now().second + datetime.now().microsecond / 1e6 + .01)
 				sleep(datetime.now().second + datetime.now().microsecond / 1e6 + .01)
 
 			except KeyboardInterrupt:
