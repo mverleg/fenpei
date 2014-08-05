@@ -16,11 +16,11 @@
 
 from re import match
 from bardeen.system import mkdirp
-from fenpei.shell import run_cmds
 from time import time
 from os import remove
-from os.path import join, abspath
+from os.path import join, isdir
 from settings import CALC_DIR
+from shutil import rmtree
 
 
 class Job(object):
@@ -238,10 +238,10 @@ class Job(object):
 					self._log('you are trying to clean up a job that is running or completed; ' + \
 					    'if you are sure you want to do this, use -f')
 					exit()
-		cmds = [
-			'/bin/rm -r %s &> /dev/null' % self.directory,
-		]
-		run_cmds(cmds, queue = self.queue)
+		if isdir(self.directory):
+			rmtree(self.directory)
+			return True
+		return False
 
 	def result(self, *args, **kwargs):
 		"""

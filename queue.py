@@ -391,9 +391,11 @@ class Queue(object):
 		"""
 			clean up all the currently added jobs (remove files)
 		"""
+		clean_count = 0
 		for job in self.jobs:
-			job.cleanup(*args, **kwargs)
-		self._log('cleaned up %d jobs' % len(self.jobs))
+			if job.cleanup(*args, **kwargs):
+				clean_count += 1
+		self._log('cleaned up %d jobs' % clean_count)
 
 	def get_status(self):
 		"""
