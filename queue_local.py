@@ -10,7 +10,6 @@
 
 from fenpei.queue import Queue
 from fenpei.shell import run_cmds
-from os.path import split
 
 
 class LocalQueue(Queue):
@@ -66,7 +65,7 @@ class LocalQueue(Queue):
 		]
 		outp = run_cmds(cmds, queue = self)
 		if not outp:
-			raise self.CommandException('job %s could not be started' % self)
+			raise self.CmdException('job %s could not be started' % self)
 		return str(int(outp[-1]))
 
 	def stop_job(self, node, pid):

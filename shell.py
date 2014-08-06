@@ -31,7 +31,8 @@ def run_cmds_on(cmds, node, wait = True, queue = None):
 		:param node:
 		:param wait:
 		:param queue:
-		:return:
+		:return: list of stdout for each command if succesful, None otherwise
+		:raise: no exceptions; writes to sys.stderr for problems
 
 		commands need to be merged because otherwise the state of cd is forgotten
 	"""

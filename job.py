@@ -44,6 +44,7 @@ class Job(object):
 			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
 		"""
 		assert match('^\w[\w\._-]*$', name)
+		assert weight > 0
 		self.name = name
 		self.weight = weight
 		self.cluster = None
@@ -179,8 +180,8 @@ class Job(object):
 					if self.is_running():
 						self.kill()
 				else:
-					self._log('you are trying to restart a job that is running or completed; \
-						use restart (-e) to skip such jobs or -f to overrule this warning')
+					self._log('you are trying to restart a job that is running or completed; ' + \
+						'use restart (-e) to skip such jobs or -f to overrule this warning')
 					exit()
 		if not self.is_prepared():
 			self.prepare()

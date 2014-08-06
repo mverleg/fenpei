@@ -155,7 +155,7 @@ class ShJob(Job):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:
 			raise self.FileNotFound(('.run_file() "%s" not found after preparation; make sure it\'s origin is in ' +
-			    '.get_files() or in __init__ substitutions argument') % self.run_file())
+				'.get_files() or in __init__ substitutions argument') % self.run_file())
 		return True
 
 	def start(self, node, *args, **kwargs):

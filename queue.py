@@ -14,7 +14,6 @@ from random import sample
 from bardeen.collection import group_by
 from bardeen.inout import reprint
 from datetime import datetime
-from job import Job
 from collections import defaultdict
 from argparse import ArgumentParser
 from os import remove
@@ -23,6 +22,7 @@ from numpy import ceil
 from bardeen.mpl import show
 from shell import run_cmds_on
 from settings import TMP_DIR
+from fenpei.job import Job
 
 
 class Queue(object):
@@ -30,6 +30,10 @@ class Queue(object):
 	def __init__(self):
 		self.show = 1
 		self.force = False
+		self.restart = False
+		self.all = False
+		self.weight = None
+		self.limit = None
 		self.jobs = []
 		self.nodes = []
 		self.slots = []
@@ -136,7 +140,7 @@ class Queue(object):
 		"""
 			distribute jobs favourably by means of kind-of-Monte-Carlo (only favourable moves)
 
-			:param jobs: (optional) the jobs to be distributed; use self.jobs if not provided
+			:param jobs: (optional) the jobs to be distributed; uses self.jobs if not provided
 			:param max_reject_spree: (optional) stopping criterion; stop when this many unfavourable moves tried in a row
 			:return: distribution, a dictionary with node *indixes* as keys and lists of jobs on that node as values
 		"""
@@ -278,6 +282,7 @@ class Queue(object):
 			add jobs to the queue
 			recommended to use .job() instead
 		"""
+
 		for job in jobs:
 			assert isinstance(job, Job)
 			job.queue = self
@@ -289,7 +294,7 @@ class Queue(object):
 	def list_jobs(self):
 		N = int(ceil(len(self.jobs) / 3.))
 		for k in range(N):
-			print '   '.join('%3d %-25s' % (p + 1, '%s [%d]' % (self.jobs[p].name, self.jobs[p].weight)) for p in [k, k+N, k+2*N] if p < len(self.jobs))
+			print '   '.join('%3d. %-25s' % (p + 1, '%s [%d]' % (self.jobs[p].name, self.jobs[p].weight)) for p in [k, k+N, k+2*N] if p < len(self.jobs))
 
 	def run_job(self, job, filepath):
 		"""
@@ -335,17 +340,82 @@ class Queue(object):
 			prepare_count += int(job.prepare(*args, **kwargs))
 		self._log('prepared %d jobs' % prepare_count)
 
-	def start(self, *args, **kwargs):
+	def running_weight(self):
 		"""
-			start all the currently added jobs
+			total weight of running jobs
 		"""
-		if not len(self.distribution) > 0:
-			self.distribute_jobs()
-		start_count = 0
-		for node_nr, jobs in self.distribution.items():
-			for job in jobs:
-				start_count += int(job.start(self.nodes[node_nr], *args, **kwargs))
-		self._log('started %d jobs' % start_count)
+
+		running_jobs = self.get_status()[1][Job.RUNNING]
+		return sum(job.weight for job in running_jobs)
+
+	def start(self):
+		"""
+			calls corresponding functions depending on flags (e.g. -z, -w, -q, -e)
+		"""
+		W = None
+		if self.all:
+			if self.weight:
+				self._log('starting all jobs; specific weight (-w) ignored')
+			if self.limit:
+				self._log('starting all jobs; limit weight (-q) ignored')
+			W = float('inf')
+		elif self.limit:
+			W = max(self.limit - self.running_weight(), 0)
+			if self.weight and W < self.weight:
+				self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
+			else:
+				self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))
+		elif self.weight:
+			W = self.weight
+			self._log('starting jobs with weight %d (by fixed weight)' % self.weight)
+		self.start_weight(W)
+
+	def start_weight(self, weight, *args, **kwargs):
+		"""
+			(re)start jobs with an approximation of total weight
+		"""
+		jobs = self.get_jobs_by_weight(weight)
+		if len(jobs):
+			self.distribute_jobs(jobs = jobs)
+			start_count = 0
+			for node_nr, jobs in self.distribution.items():
+				for job in jobs:
+					job.cleanup(*args, **kwargs)
+					start_count += int(job.start(self.nodes[node_nr], *args, **kwargs))
+			self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
+		else:
+			self._log('no jobs to restart' if self.restart else 'no jobs to start')
+
+	def get_jobs_by_weight(self, weight):
+		"""
+			find jobs with an approximation of total weight
+		"""
+
+		""" find eligible jobs (in specific order) """
+		job_status = self.get_status()[1]
+		if self.restart:
+			startable = job_status[Job.PREPARED] + job_status[Job.NONE] + job_status[Job.CRASHED]
+		else:
+			startable = job_status[Job.PREPARED] + job_status[Job.NONE]
+		if not startable:
+			self._log('there are no jobs that can be started')
+			return []
+		total_weight = sum(job.weight for job in startable)
+		if total_weight is None:
+			""" start only one job """
+			jobs = [startable[0]]
+		elif weight > total_weight:
+			""" start all jobs """
+			jobs = startable
+		else:
+			""" start jobs with specific weight """
+			jobs, current_weight = [], 0
+			startable = sorted(startable, key = lambda item: item.weight - (10 if item.status == Job.CRASHED else 0))
+			for job in startable:
+				if current_weight + job.weight <= weight:
+					jobs.append(job)
+					current_weight += job.weight
+		return jobs
 
 	def fix(self, *args, **kwargs):
 		"""
@@ -355,28 +425,6 @@ class Queue(object):
 		for job in self.jobs:
 			fix_count += int(job.fix(*args, **kwargs))
 		self._log('fixed %d jobs' % fix_count)
-
-	def restart(self, *args, **kwargs):
-		"""
-			restart the jobs that have succesfully completed or aren't running
-		"""
-		from fenpei.job import Job
-		restart_jobs = []
-		for job in self.jobs:
-			job.find_status()
-			if job.status not in [Job.RUNNING, Job.COMPLETED]:
-				restart_jobs.append(job)
-		if len(restart_jobs):
-			if not len(self.distribution) > 0:
-				self.distribute_jobs(jobs = restart_jobs)
-			start_count = 0
-			for node_nr, jobs in self.distribution.items():
-				for job in jobs:
-					job.cleanup(*args, **kwargs)
-					start_count += int(job.start(self.nodes[node_nr], *args, **kwargs))
-			self._log('restarted %d jobs' % start_count)
-		else:
-			self._log('no jobs need restarting')
 
 	def kill(self, *args, **kwargs):
 		"""
@@ -413,22 +461,17 @@ class Queue(object):
 		"""
 			show list of statusses
 		"""
+
 		self._log('status for %d jobs:' % len(self.jobs), level = 1)
 		for status_nr in status_list.keys():
 			job_names = ', '.join(str(job) for job in status_list[status_nr])
 			self._log(' %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...'))
 
-	def status(self):
-		"""
-			get and show the status of jobs
-		"""
-		status_count, status_list = self.get_status()
-		self.show_status(status_count, status_list)
-
 	def continuous_status(self, delay = 5):
 		"""
 			keep refreshing status until ctrl+C
 		"""
+
 		self._log('monitoring status; use cltr+C to terminate')
 		lines = len(Job.status_names) + 1
 		print '\n' * lines
@@ -446,16 +489,23 @@ class Queue(object):
 					self._log('status monitoring terminated; no more running jobs')
 					break
 
-				print 'slee[ing for %fs' % (datetime.now().second + datetime.now().microsecond / 1e6 + .01)
-				sleep(datetime.now().second + datetime.now().microsecond / 1e6 + .01)
+				""" sleep to the next %delay point (e.g. for 5s, check at :05, :10, :15 etc (not :14, :19 etc) """
+				sleep(delay - (datetime.now().second + datetime.now().microsecond / 1e6 + .01) % delay)
 
 			except KeyboardInterrupt:
 				self._log('status monitoring terminated by user')
 				break
 
+	def status(self):
+		"""
+			get and show the status of jobs
+		"""
+		status_count, status_list = self.get_status()
+		self.show_status(status_count, status_list)
+
 	def result(self, *args, **kwargs):
 		"""
-			@return a dict of job results, with names as keys
+			:return: a dict of job results, with names as keys
 		"""
 		results = {}
 		for job in self.jobs:
@@ -478,14 +528,17 @@ class Queue(object):
 			analyze sys.argv and run commands based on it
 		"""
 		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
-		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'show more information (can be used multiple times, -vv)')
+		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
 		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of warning')
+		parser.add_argument('-e', '--restart', dest = 'restart', action = 'store_true', help = 'toggle restarting failed jobs')
 		parser.add_argument('-a', '--availability', dest = 'availability', action = 'store_true', help = 'list all available nodes and their load (cache reload)')
 		parser.add_argument('-d', '--distribute', dest = 'distribute', action = 'store_true', help = 'distribute the jobs over available nodes')
 		parser.add_argument('-l', '--list', dest = 'actions', action = 'append_const', const = self.list_jobs, help = 'show a list of added jobs')
 		parser.add_argument('-p', '--prepare', dest = 'actions', action = 'append_const', const = self.prepare, help = 'prepare all the jobs')
-		parser.add_argument('-c', '--calc', dest = 'actions', action = 'append_const', const = self.start, help = 'start calculating all the jobs')
-		parser.add_argument('-e', '--recalc', dest = 'actions', action = 'append_const', const = self.restart, help = 'restart calculating the jobs that failed')
+		parser.add_argument('-c', '--calc', dest = 'actions', action = 'append_const', const = self.start, help = 'start calculating one jobs, or see -z/-w/-q')
+		parser.add_argument('-z', '--all', dest = 'all', action = 'store_true', help = '-c will start all jobs')
+		parser.add_argument('-w', '--weight', dest = 'weight', action = 'store', type = int, default = None, help = '-c will start jobs with total WEIGHT running')
+		parser.add_argument('-q', '--fill', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
 		parser.add_argument('-k', '--kill', dest = 'actions', action = 'append_const', const = self.kill, help = 'terminate the calculation of all the running jobs')
 		parser.add_argument('-r', '--remove', dest = 'actions', action = 'append_const', const = self.cleanup, help = 'clean up all the job files')
 		parser.add_argument('-g', '--fix', dest = 'actions', action = 'append_const', const = self.fix, help = 'fix jobs (e.g. after update)')
@@ -494,13 +547,19 @@ class Queue(object):
 		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = self.summary, help = 'collect and show the result of jobs')
 		args = parser.parse_args()
 
-		if not args.actions and not args.availability and not args.distribute:
+		if not args.actions and not any((args.availability, args.distribute, args.weight, args.limit,)):
 			self._log('please provide some action')
 			parser.print_help()
 			exit()
 
+		#print [act.__name__ for act in args.actions]
+		#if args.all or args.weight or args.limit:
+		#	for action in (args.actions or []):
+		#		if action == self.start_all:
+		#			print 'already starting'
+
 		self.show = args.verbosity + 1
-		self.force = args.force
+		self.force, self.restart, self.all, self.weight, self.limit = args.force, args.restart, args.all, args.weight, args.limit
 		if args.availability:
 			prev_show, self.show = self.show, 2
 			self.unsave_nodes()

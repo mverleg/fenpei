@@ -2,6 +2,7 @@
 """
 	test feinpei
 """
+from fenpei.queue_nijm import NijmQueue
 
 from fenpei.test.job_test import TestJob
 from fenpei.queue_local import LocalQueue
@@ -20,7 +21,9 @@ def test_jobs():
 			weight = int(N / 10) + 1,
 		))
 
-	queue = LocalQueue()
+	#queue = LocalQueue()
+	queue = NijmQueue()
+	queue.all_nodes()
 	queue.add_jobs(jobs)
 	return queue
 

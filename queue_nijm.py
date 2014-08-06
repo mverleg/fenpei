@@ -2,10 +2,12 @@
 """
 	http://cricket.science.ru.nl/grapher.cgi?target=%2Fclusternodes
 """
+from datetime import time
+from os.path import join
 
-from bs4 import BeautifulSoup
-from requests import get
+from fenpei.shell import run_cmds_on, run_cmds
 from fenpei.queue import Queue
+from re import findall
 
 
 class NijmQueue(Queue):
@@ -13,21 +15,14 @@ class NijmQueue(Queue):
 	QSUB_GENERAL_NAME = 'thchem'
 
 	def all_nodes(self):
+		"""
+			specific nodes are irrelevant; everything in main queue
+		"""
 		if not super(NijmQueue, self).all_nodes():
-			return
-		html = get('http://cricket.science.ru.nl/grapher.cgi?target=%2Fclusternodes').text
-		soup = BeautifulSoup(html)
-		trs = soup.find('table').find_all('tr')
-		for tr in trs:
-			tds = tr.find_all('td')
-			print tds[1].text.lower()
-		exit()
-		# todo: continue
-		#self.nodes.append(fnd.groups(0)[0])
-		self.nodes = sorted(self.nodes)
-		self.nodes = [self.short_node_name(node) for node in self.nodes]
-		self.log('%d nodes found' % len(self.nodes))
-		self.log('nodes: %s' % ', '.join(self.nodes), level = 2)
+			return False
+		self._log('no specific nodes; all to general queue')
+		self.nodes = [self.QSUB_GENERAL_NAME]
+		return True
 
 	def node_availability(self):
 		raise NotImplementedError('this should not be implemented for %s because the qsub-queue does the distributing' % self.__class__)
@@ -39,55 +34,64 @@ class NijmQueue(Queue):
 		self._log('call to distribute %d jobs ignored; qsub will do distribution' % len(jobs))
 		self.distribution = {0: jobs}
 
+	def _test_qstat(self):
+		if run_cmds(['qstat'], queue = self) is None:
+			self._log('qstat does not work on this machine; run this code from a node that has access to the queue')
+			exit()
+
+	def _get_qstat(self):
+		outp = run_cmds(['qstat'], queue = self)
+		if not outp:
+			return None
+		for line in outp.splitlines()[2:]:
+			line = line.split()
+			if 'E' in line[-6]:
+				return None
+			return {
+				'pid':  int(line[0]),
+				'name': ' '.join(line[2:-6]), # in case of space in name somehow
+				'user': line[-6],
+				'queue': findall(r'@(\w+)\.', line[-2])[0],
+			}
+
 	def processes(self, node):
 		"""
 			get processes on specific node and cache them
 		"""
+		self._test_qstat()
 		if node in self.process_time.keys():
 			if time() - self.process_time[node] < 3:
 				return self.process_list[node]
 		self.log('loading processes for %s' % node, level = 3)
 		self.process_time[node] = time()
 		self.process_list[node] = []
-		outp = run_cmds_on([
-			'ps ux',
-		], node = node, queue = self)
-		if outp is None:
-			self.log('can not connect to %s; are you on the cluster?' % node)
-			exit()
-		for line in outp[0].splitlines()[1:]:
-			cells = line.split()
-			ps_dict = {
-				'pid':  int(cells[1]),
-				'name': ' '.join(cells[10:]),
-				'user': cells[0],
-				'start':cells[8],
-				'time': cells[9],
-				'node': node,
-			}
-			if not ps_dict['name'] == '-bash' and not ps_dict['name'].startswith('sshd: ') and not ps_dict['name'] == 'ps ux':
-				self.process_list[node].append(ps_dict)
+		ps_dict = self._get_qstat()
+		self.process_list[node].append(ps_dict)
 		return self.process_list[node]
 
 	def run_cmd(self, job, cmd):
 		"""
-			start an individual job by means of a shell command
-
-			:param job: the job that's being started this way
-			:param cmd: shell commands to run (should include nohup and & as appropriate)
-			:return: process id (str)
+			start an individual job by means of queueing a shell command
 		"""
-		# todo: use qsub
-		raise NotImplementedError('qsub, if that ever happens')
+		self._test_qstat()
 		assert job.directory
 		cmds = [
 			'cd \'%s\'' % job.directory,
-			cmd,
-			'echo "$\!"' # pid
+			'qsub',                             # wait in line
+				'-b', 'y',                      # it's a binary
+				'-cwd',                         # use the current working directory
+				'-q', self.QSUB_GENERAL_NAME,   # which que to wait in
+				'-N', job.name,                 # name of the job
+				'-e', join(job.directory, 'qsub.err'),	# error directory for the que
+				'-o', join(job.directory, 'qsub.out'),	# output directory for the que
+			'"%s"' % cmd,                       # the actual command
 		]
-		outp = run_cmds_on(cmds, node = job.node, queue = self)
+		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
 		if not outp:
 			raise self.C ('job %s could not be started' % self)
-		return str(int(outp[-1]))
+		qid = findall(r'Your job (\d+) ("[^"]+") has been submitted', outp)[0]
+		if not qid:
+			raise self.C ('job %s id could not be found in "%s"' % (self, outp))
+		return qid
 
 
