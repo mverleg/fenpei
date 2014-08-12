@@ -22,7 +22,7 @@ class ShJobSingle(ShJob):
 			setattr(self, key, val)
 		substitutions = {filepath: subs for filepath in self.get_sub_files() + sub_files}.update({
 						 filepath: None for filepath in self.get_nosub_files() + nosub_files})
-		super(ShJob, self).__init__(name = name, substitutions = substitutions, weight = weight, batch_name = batch_name)
+		super(ShJobSingle, self).__init__(name = name, substitutions = substitutions, weight = weight, batch_name = batch_name)
 
 	@classmethod
 	def get_sub_files(cls):
