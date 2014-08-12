@@ -106,7 +106,7 @@ class ShJob(Job):
 				""" recursively expand a directory into all it's files """
 				newfiles[path_pair] = subst
 			if not exists(join(*filepath)):
-				raise self.FileNotFound('%s is not a valid file or directory' % filepath)
+				raise self.FileNotFound('"%s" is not a valid file or directory' % join(*filepath))
 		self.files = newfiles
 
 	def is_prepared(self):
