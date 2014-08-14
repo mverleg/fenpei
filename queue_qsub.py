@@ -70,6 +70,7 @@ class QsubQueue(Queue):
 		assert job.directory
 		cmds = [
 			'cd \'%s\'' % job.directory,
+			';',
 			'qsub',                             # wait in line
 				'-b', 'y',                      # it's a binary
 				'-cwd',                         # use the current working directory
