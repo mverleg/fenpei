@@ -76,13 +76,12 @@ class QsubQueue(Queue):
 				'-N', job.name,                 # name of the job
 				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
-			'"%s"' % cmd,                       # the actual command
+			'\'%s\'' % cmd,                       # the actual command (single quotes!)
 		]
 		cmds = [
 			'cd \'%s\'' % job.directory,
 			' '.join(subcmd),
 		]
-		self._log(' '.join(cmds), level = 2)
 		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
 		if not outp:
 			raise self.C ('job %s could not be started' % self)
