@@ -68,9 +68,7 @@ class QsubQueue(Queue):
 		"""
 		self._test_qstat()
 		assert job.directory
-		cmds = [
-			'cd \'%s\'' % job.directory,
-			';',
+		subcmd = [
 			'qsub',                             # wait in line
 				'-b', 'y',                      # it's a binary
 				'-cwd',                         # use the current working directory
@@ -79,6 +77,10 @@ class QsubQueue(Queue):
 				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
 			'"%s"' % cmd,                       # the actual command
+		]
+		cmds = [
+			'cd \'%s\'' % job.directory,
+			' '.join(subcmd),
 		]
 		self._log(' '.join(cmds), level = 2)
 		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
