@@ -2,10 +2,9 @@
 """
 	test feinpei
 """
-from fenpei.queue_nijm import NijmQueue
 
+from fenpei.queue_nijm import NijmQueue
 from fenpei.test.job_test import TestJob
-from fenpei.queue_local import LocalQueue
 
 
 def test_jobs():
@@ -26,6 +25,7 @@ def test_jobs():
 	queue.all_nodes()
 	queue.add_jobs(jobs)
 	return queue
+
 
 if __name__ == '__main__':
 	queue = test_jobs()

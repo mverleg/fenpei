@@ -1,11 +1,6 @@
 
 """
-	distribute jobs over multiple machines by means of ssh
-	- find quiet nodes
-	- start jobs if space
-	- weight jobs
-	- get status info
-	- restart failed
+	Run jobs on local machine, e.g. for testing.
 """
 
 from fenpei.queue import Queue

@@ -4,7 +4,6 @@
 
 	automatically adds all substitutions as attributes to the job
 """
-#todo: could possibly be more efficient by not converting to ShJob
 
 from copy import copy
 from fenpei.job_sh import ShJob
@@ -24,7 +23,7 @@ class ShJobSingle(ShJob):
 		subs_with_defaults = copy(self.get_default_subs())
 		subs_with_defaults.update(subs)
 		""" substitutions as job properties """
-		for key, val in subs.items():
+		for key, val in subs_with_defaults.items():
 			setattr(self, key, val)
 		""" convert to per-file format to make a ShJob """
 		substitutions = {filepath: subs_with_defaults for filepath in self.get_sub_files() + sub_files}

@@ -2,16 +2,27 @@
 Jobs
 ==================================
 
-.. automodule:: Job
+Job
+------------------
+
+.. automodule:: job
    :members:
 
-.. automodule:: Job_test
+Shell job
+------------------
+
+.. automodule:: job_sh
    :members:
 
-.. automodule:: Job_nn
+Simple shell job
+------------------
+
+.. automodule:: job_sh_single
    :members:
 
-.. automodule:: Job_shef
-   :members:
+Python job
+------------------
+
+Python job run a Python file, but is not being developed anymore.
 
 

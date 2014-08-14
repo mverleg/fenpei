@@ -6,8 +6,9 @@
 
 from os.path import join, exists
 from re import findall
-from bardeen.mpl.xkcd import subplots
+from bardeen.mpl import MPL, subplots
 from fenpei.job_sh import ShJob
+MPL.xkcd()
 
 
 class TestJob(ShJob):

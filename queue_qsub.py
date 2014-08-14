@@ -1,24 +1,24 @@
 
 """
-	http://cricket.science.ru.nl/grapher.cgi?target=%2Fclusternodes
+	Queue using qsub to start jobs.
 """
+
 from datetime import time
 from os.path import join
-
 from fenpei.shell import run_cmds_on, run_cmds
 from fenpei.queue import Queue
 from re import findall
 
 
-class NijmQueue(Queue):
+class QsubQueue(Queue):
 
-	QSUB_GENERAL_NAME = 'thchem'
+	QSUB_GENERAL_NAME = 'queuename'
 
 	def all_nodes(self):
 		"""
 			specific nodes are irrelevant; everything in main queue
 		"""
-		if not super(NijmQueue, self).all_nodes():
+		if not super(QsubQueue, self).all_nodes():
 			return False
 		self._log('no specific nodes; all to general queue')
 		self.nodes = [self.QSUB_GENERAL_NAME]
@@ -48,8 +48,8 @@ class NijmQueue(Queue):
 			if 'E' in line[-6]:
 				return None
 			return {
-				'pid':  int(line[0]),
-				'name': ' '.join(line[2:-6]), # in case of space in name somehow
+				'pid': int(line[0]),
+				'name': ' '.join(line[2:-6]),  # in case of space in name somehow
 				'user': line[-6],
 				'queue': findall(r'@(\w+)\.', line[-2])[0],
 			}
@@ -82,8 +82,8 @@ class NijmQueue(Queue):
 				'-cwd',                         # use the current working directory
 				'-q', self.QSUB_GENERAL_NAME,   # which que to wait in
 				'-N', job.name,                 # name of the job
-				'-e', join(job.directory, 'qsub.err'),	# error directory for the que
-				'-o', join(job.directory, 'qsub.out'),	# output directory for the que
+				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
+				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
 			'"%s"' % cmd,                       # the actual command
 		]
 		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]

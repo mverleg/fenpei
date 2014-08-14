@@ -45,6 +45,7 @@ class ShJob(Job):
 			if isinstance(subst, Mapping):
 				subst['name'] = name
 				subst['now'] = timestr
+				subst['directory'] = self.directory
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
 		self._fix_files()

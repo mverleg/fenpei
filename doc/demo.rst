@@ -6,12 +6,13 @@ Small demo on the use of *fenpei*.
 
 .. comment: some index here? apparently no page index usually...
 
-Job file
+Job
 ------------------
 
-todo
+.. automodule:: job_test
+   :members:
 
-Queue file
+Queue
 ------------------
 
 todo
@@ -23,3 +24,5 @@ Something like this, I forgot :superscript:`sorry about that`. Just run ``python
 
 	python myjob.py -l
 	# get output here
+
+

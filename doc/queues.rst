@@ -2,16 +2,22 @@
 Queues
 ==================================
 
-.. automodule:: Queue
+Ssh queue
+------------------
+
+.. automodule:: queue
    :members:
 
-.. automodule:: Queue_local
+Qsub queue
+---------------------
+
+.. automodule:: queue_qsub
    :members:
 
-.. automodule:: Queue_dicp
-   :members:
+Local queue
+------------------
 
-.. automodule:: Queue_nijm
+.. automodule:: queue_local
    :members:
 
 

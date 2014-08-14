@@ -1,12 +1,13 @@
 
 """
-	distribute jobs over multiple machines by means of ssh
+	Distribute jobs over multiple machines by means of ssh
+
 	- find quiet nodes
 	- start jobs if space
 	- weight jobs
 	- get status info
 	- restart failed
-	-
+
 """
 
 from time import time, sleep
@@ -390,7 +391,6 @@ class Queue(object):
 		"""
 			find jobs with an approximation of total weight
 		"""
-
 		""" find eligible jobs (in specific order) """
 		job_status = self.get_status()[1]
 		if self.restart:
@@ -401,10 +401,11 @@ class Queue(object):
 			self._log('there are no jobs that can be started')
 			return []
 		total_weight = sum(job.weight for job in startable)
-		if total_weight is None:
+		print startable, weight, total_weight
+		if not total_weight:
 			""" start only one job """
 			jobs = [startable[0]]
-		elif weight > total_weight:
+		elif weight > total_weight or weight is None:
 			""" start all jobs """
 			jobs = startable
 		else:
