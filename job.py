@@ -125,7 +125,7 @@ class Job(object):
 			raise Exception('cannot check if %s is running because it is not in a queue' % self)
 		proc_list = self.queue.processes(self.node)
 		try:
-			return self.pid in [proc['pid'] for proc in proc_list]
+			return self.pid in [proc['pid'] for proc in proc_list if proc is not None]
 		except KeyError:
 			raise Exception('node %s for job %s no longer found?' % (self.node, self))
 		return True

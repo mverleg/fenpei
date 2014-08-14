@@ -164,9 +164,12 @@ class ShJob(Job):
 			start the job and store node/pid
 		"""
 		self._start_pre(*args, **kwargs)
-		cmd = 'nohup ./%s &> out.log &' % self.run_file()
+		""" nohup, bg and std redirect should be handeled by queue """
+		#cmd = 'nohup ./%s &> out.log &' % self.run_file()
+		cmd = './%s' % self.run_file()
 		pid = self.queue.run_cmd(job = self, cmd = cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
+
 
 
