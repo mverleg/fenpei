@@ -544,7 +544,7 @@ class Queue(object):
 		#parser.add_argument('-b', '--keepcalc', dest = 'actions', action = 'append_const', const = None, help = 'like -c, but keeps checking and filling')
 		parser.add_argument('-z', '--all', dest = 'all', action = 'store_true', help = '-c will start all jobs')
 		parser.add_argument('-w', '--weight', dest = 'weight', action = 'store', type = int, default = None, help = '-c will start jobs with total WEIGHT running')
-		parser.add_argument('-q', '--fill', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
+		parser.add_argument('-q', '--limit', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
 		parser.add_argument('-k', '--kill', dest = 'actions', action = 'append_const', const = self.kill, help = 'terminate the calculation of all the running jobs')
 		parser.add_argument('-r', '--remove', dest = 'actions', action = 'append_const', const = self.cleanup, help = 'clean up all the job files')
 		parser.add_argument('-g', '--fix', dest = 'actions', action = 'append_const', const = self.fix, help = 'fix jobs (e.g. after update)')
