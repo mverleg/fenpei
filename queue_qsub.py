@@ -45,7 +45,6 @@ class QsubQueue(Queue):
 			yield
 		for line in outp.splitlines()[2:]:
 			line = line.split()
-			print line
 			if 'E' in line[-6]:
 				yield None
 			""" assume no spaces in name """
@@ -79,15 +78,16 @@ class QsubQueue(Queue):
 				'-N', job.name,                 # name of the job
 				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
-			'\'%s\'' % cmd,                       # the actual command (single quotes!)
+			'bash -c \'%s\'' % cmd,		    # the actual command (single quotes!)
 		]
 		cmds = [
 			'cd \'%s\'' % job.directory,
 			' '.join(subcmd),
 		]
+		self._log(cmds[-1], level = 3)
 		outp = run_cmds_on(cmds, node = job.node, queue = self)[1]
 		if not outp:
-			raise self.CmdException('job %s could not be started' % self)
+			raise self.CmdException('job %s could not be started (output is empty)' % job)
 			
 		qid = findall(r'Your job (\d+) \("[^"]+"\) has been submitted', outp)
 		if not qid:
