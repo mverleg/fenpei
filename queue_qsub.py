@@ -83,11 +83,12 @@ class QsubQueue(Queue):
 			' '.join(subcmd),
 		]
 		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
+		print outp
 		if not outp:
 			raise self.CmdException('job %s could not be started' % self)
 		qid = findall(r'Your job (\d+) ("[^"]+") has been submitted', outp)
 		if not qid:
-			raise self.CmdException('job %s id could not be found in "%s"' % (self, outp))
+			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp))
 		return qid
 
 
