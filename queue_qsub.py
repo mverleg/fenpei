@@ -42,12 +42,12 @@ class QsubQueue(Queue):
 	def _get_qstat(self):
 		outp = run_cmds(['qstat'], queue = self)
 		if not outp:
-			return None
+			yield
 		for line in outp.splitlines()[2:]:
 			line = line.split()
 			if 'E' in line[-6]:
-				return None
-			return {
+				yield None
+			yield {
 				'pid': int(line[0]),
 				'name': ' '.join(line[2:-6]),  # in case of space in name somehow
 				'user': line[-6],
@@ -56,18 +56,11 @@ class QsubQueue(Queue):
 
 	def processes(self, node):
 		"""
-			get processes on specific node and cache them
+			get process info from qstat (no need for caching)
 		"""
 		self._test_qstat()
-		if node in self.process_time.keys():
-			if time() - self.process_time[node] < 3:
-				return self.process_list[node]
 		self.log('loading processes for %s' % node, level = 3)
-		self.process_time[node] = time()
-		self.process_list[node] = []
-		ps_dict = self._get_qstat()
-		self.process_list[node].append(ps_dict)
-		return self.process_list[node]
+		return [pd for pd in self._get_qstat()]
 
 	def run_cmd(self, job, cmd):
 		"""
@@ -86,6 +79,7 @@ class QsubQueue(Queue):
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
 			'"%s"' % cmd,                       # the actual command
 		]
+		self._log(' '.join(cmds), level = 2)
 		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
 		if not outp:
 			raise self.C ('job %s could not be started' % self)

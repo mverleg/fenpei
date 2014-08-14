@@ -26,7 +26,7 @@ from settings import TMP_DIR
 from fenpei.job import Job
 
 
-class Queue(object):
+class Queue(object, jobs = None):
 
 	def __init__(self):
 		self.show = 1
@@ -41,6 +41,8 @@ class Queue(object):
 		self.distribution = {}
 		self.process_list = {}
 		self.process_time = {}
+		if jobs:
+			self.add_jobs(jobs)
 
 	def _log(self, txt, level = 1):
 		"""
