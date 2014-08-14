@@ -10,8 +10,7 @@ from fenpei.test.job_test import TestJob
 def test_jobs():
 
 	jobs = []
-	params = set(int(k**1.7) for k in range(5, 20))
-	params.add(1)
+	params = set(int(k**1.7) for k in range(1, 15))
 
 	for N in params:
 		jobs.append(TestJob(

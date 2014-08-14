@@ -3,9 +3,8 @@
 	Queue using qsub to start jobs.
 """
 
-from datetime import time
 from os.path import join
-from fenpei.shell import run_cmds_on, run_cmds
+from fenpei.shell import run_cmds
 from fenpei.queue import Queue
 from re import findall
 
@@ -62,6 +61,12 @@ class QsubQueue(Queue):
 		self.log('loading processes for %s' % node, level = 3)
 		return [pd for pd in self._get_qstat()]
 
+	def stop_job(self, node, pid):
+		"""
+			remove individual job from queue
+		"""
+		run_cmds(['qdel %s' % pid], queue = self)
+
 	def run_cmd(self, job, cmd):
 		"""
 			start an individual job by means of queueing a shell command
@@ -82,13 +87,13 @@ class QsubQueue(Queue):
 			'cd \'%s\'' % job.directory,
 			' '.join(subcmd),
 		]
-		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
+		outp = run_cmds(cmds, queue = self)[0]
 		print outp
 		if not outp:
 			raise self.CmdException('job %s could not be started' % self)
 		qid = findall(r'Your job (\d+) ("[^"]+") has been submitted', outp)
 		if not qid:
 			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp))
-		return qid
+		return int(qid)
 
 
