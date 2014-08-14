@@ -3,25 +3,24 @@
 	test feinpei
 """
 
-from fenpei.queue_nijm import NijmQueue
+from fenpei.queue_local import LocalQueue
 from fenpei.test.job_test import TestJob
 
 
 def test_jobs():
 
 	jobs = []
-	params = set(int(k**1.5) for k in range(5, 20))
+	params = set(int(k**1.7) for k in range(5, 20))
 	params.add(1)
 
 	for N in params:
 		jobs.append(TestJob(
 			name = 'test%d' % N,
-			substitutions = {TestJob.get_files()[0]: {'N': N}},
+			subs = {'N': N},
 			weight = int(N / 10) + 1,
 		))
 
-	#queue = LocalQueue()
-	queue = NijmQueue()
+	queue = LocalQueue()
 	queue.all_nodes()
 	queue.add_jobs(jobs)
 	return queue

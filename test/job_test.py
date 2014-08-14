@@ -6,21 +6,18 @@
 
 from os.path import join, exists
 from re import findall
-from bardeen.mpl import MPL, subplots
-from fenpei.job_sh import ShJob
-MPL.xkcd()
+from fenpei.job_sh_single import ShJobSingle
+from settings import BASE_DIR
 
 
-class TestJob(ShJob):
+class TestJob(ShJobSingle):
 
 	@classmethod
-	def get_files(cls):
+	def get_sub_files(cls):
 		"""
-			:return: the list of files and directories used by this code, which will be linked or copied
-
-			substitutions for non-static files should be supplied to the constructor
+			:return: list of files with substitutions
 		"""
-		return ['/home/mark/fenpei/test/test_run.sh']
+		return [(BASE_DIR, 'test_run.sh')]
 
 	@classmethod
 	def run_file(cls):
@@ -28,9 +25,6 @@ class TestJob(ShJob):
 			:return: the path to the file which executes the job; should be in get_files()
 		"""
 		return 'test_run.sh'
-
-	def get_N(self):
-		return int(self.files[self.get_files()[0]]['N'])
 
 	def get_outp(self):
 		outpath = join(self.directory, 'result.txt')
@@ -51,18 +45,22 @@ class TestJob(ShJob):
 		return {
 			'items': [int(item) for item in itemstrs],
 			'output': outp,
-			'N': self.get_N(),
+			'N': self.N,
 		}
 
 	@classmethod
 	def summary(cls, results, jobs, *args, **kwargs):
+		from bardeen.mpl import MPL, subplots
+		MPL.xkcd()
 		pairs = []
 		for di in results:
 			x, ys = di['N'], di['items']
 			for y in ys:
 				pairs.append((x, y))
-		x, y = zip(*pairs)
-		fig, ax = subplots(total = 1)
-		ax.scatter(x, y)
-
+		if pairs:
+			x, y = zip(*pairs)
+			fig, ax = subplots(total = 1)
+			ax.scatter(x, y)
+		else:
+			print 'no results yet'
 

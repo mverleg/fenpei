@@ -11,14 +11,14 @@ class LocalQueue(Queue):
 
 	def all_nodes(self):
 		self.nodes = ['localhost']
-		self._log('nodes: localhost')
+		self._log('nodes: localhost', level = 2)
 		return True
 
 	def node_availability(self):
 		if not self.nodes:
 			self.all_nodes()
 		self.slots = [10]
-		self._log('availability: localhost')
+		self._log('availability: localhost', level = 2)
 		return True
 
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
@@ -29,7 +29,7 @@ class LocalQueue(Queue):
 		self.distribution = {
 			0: jobs
 		}
-		self._log('distribution: all on localhost')
+		self._log('distribution: all on localhost', level = 2)
 
 	def processes(self, node):
 		"""

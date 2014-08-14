@@ -341,13 +341,17 @@ class Queue(object):
 			prepare_count += int(job.prepare(*args, **kwargs))
 		self._log('prepared %d jobs' % prepare_count)
 
+	def running_count(self):
+		"""
+			how many running jobs
+		"""
+		return len(self.get_status()[1][Job.RUNNING])
+
 	def running_weight(self):
 		"""
 			total weight of running jobs
 		"""
-
-		running_jobs = self.get_status()[1][Job.RUNNING]
-		return sum(job.weight for job in running_jobs)
+		return sum(job.weight for job in self.get_status()[1][Job.RUNNING])
 
 	def start(self):
 		"""
@@ -387,7 +391,7 @@ class Queue(object):
 		else:
 			self._log('no jobs to restart' if self.restart else 'no jobs to start')
 
-	def get_jobs_by_weight(self, weight):
+	def get_jobs_by_weight(self, max_weight):
 		"""
 			find jobs with an approximation of total weight
 		"""
@@ -401,21 +405,21 @@ class Queue(object):
 			self._log('there are no jobs that can be started')
 			return []
 		total_weight = sum(job.weight for job in startable)
-		print startable, weight, total_weight
 		if not total_weight:
 			""" start only one job """
 			jobs = [startable[0]]
-		elif weight > total_weight or weight is None:
+		elif max_weight > total_weight or max_weight is None:
 			""" start all jobs """
 			jobs = startable
 		else:
 			""" start jobs with specific weight """
 			jobs, current_weight = [], 0
-			startable = sorted(startable, key = lambda item: item.weight - (10 if item.status == Job.CRASHED else 0))
+			startable = sorted(startable, key = lambda item: - item.weight - (10 if item.status == Job.CRASHED else 0))
 			for job in startable:
-				if current_weight + job.weight <= weight:
+				if current_weight + job.weight <= max_weight:
 					jobs.append(job)
 					current_weight += job.weight
+		self._log('starting: ' + ', '.join(job.name for job in jobs), level = 2)
 		return jobs
 
 	def fix(self, *args, **kwargs):
@@ -480,7 +484,7 @@ class Queue(object):
 			try:
 				status_count, status_list = self.get_status()
 
-				txt = '%s - status for %d jobs:' % (datetime.now().strftime('%H:%M:%S'), len(self.jobs))
+				txt = '%s - job# %d; weight %d:' % (datetime.now().strftime('%H:%M:%S'), self.running_count(), self.running_weight())
 				for status_nr in status_list.keys():
 					job_names = ', '.join(str(job) for job in status_list[status_nr])
 					txt += '\n %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...')
@@ -537,6 +541,7 @@ class Queue(object):
 		parser.add_argument('-l', '--list', dest = 'actions', action = 'append_const', const = self.list_jobs, help = 'show a list of added jobs')
 		parser.add_argument('-p', '--prepare', dest = 'actions', action = 'append_const', const = self.prepare, help = 'prepare all the jobs')
 		parser.add_argument('-c', '--calc', dest = 'actions', action = 'append_const', const = self.start, help = 'start calculating one jobs, or see -z/-w/-q')
+		#parser.add_argument('-b', '--keepcalc', dest = 'actions', action = 'append_const', const = None, help = 'like -c, but keeps checking and filling')
 		parser.add_argument('-z', '--all', dest = 'all', action = 'store_true', help = '-c will start all jobs')
 		parser.add_argument('-w', '--weight', dest = 'weight', action = 'store', type = int, default = None, help = '-c will start jobs with total WEIGHT running')
 		parser.add_argument('-q', '--fill', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
@@ -548,19 +553,16 @@ class Queue(object):
 		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = self.summary, help = 'collect and show the result of jobs')
 		args = parser.parse_args()
 
-		if not args.actions and not any((args.availability, args.distribute, args.weight, args.limit,)):
+		actions = args.actions or []
+		self.show = args.verbosity + 1
+		self.force, self.restart, self.all, self.weight, self.limit = \
+			args.force, args.restart, args.all, args.weight, args.limit
+
+		if not actions and not any((args.availability, args.distribute, self.restart, self.all, self.weight, self.limit,)):
 			self._log('please provide some action')
 			parser.print_help()
-			exit()
+			return
 
-		#print [act.__name__ for act in args.actions]
-		#if args.all or args.weight or args.limit:
-		#	for action in (args.actions or []):
-		#		if action == self.start_all:
-		#			print 'already starting'
-
-		self.show = args.verbosity + 1
-		self.force, self.restart, self.all, self.weight, self.limit = args.force, args.restart, args.all, args.weight, args.limit
 		if args.availability:
 			prev_show, self.show = self.show, 2
 			self.unsave_nodes()
@@ -570,7 +572,21 @@ class Queue(object):
 		if args.distribute:
 			self.distribute_jobs()
 
-		if args.actions:
+		if not self.start in actions:
+			if self.restart:
+				self._log('you requested that failed jobs be restarted, but didn\'t specify a start command [-c]')
+				return
+			if self.all:
+				self._log('you requested that all jobs be started, but didn\'t specify a start command [-c]')
+				return
+			if self.weight:
+				self._log('you specified a weight for jobs to be started, but didn\'t specify a start command [-c]')
+				return
+			if self.limit:
+				self._log('you specified a weight for jobs to keep running, but didn\'t specify a start command [-c]')
+				return
+
+		if actions:
 			for action in args.actions:
 				action()
 
