@@ -26,9 +26,9 @@ from settings import TMP_DIR
 from fenpei.job import Job
 
 
-class Queue(object, jobs = None):
+class Queue(object):
 
-	def __init__(self):
+	def __init__(self, jobs = None):
 		self.show = 1
 		self.force = False
 		self.restart = False
