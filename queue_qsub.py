@@ -40,18 +40,21 @@ class QsubQueue(Queue):
 			exit()
 
 	def _get_qstat(self):
-		outp = run_cmds(['qstat'], queue = self)
+		outp = run_cmds(['qstat'], queue = self)[0]
 		if not outp:
 			yield
 		for line in outp.splitlines()[2:]:
 			line = line.split()
+			print line
 			if 'E' in line[-6]:
 				yield None
+			""" assume no spaces in name """
+			qstr = findall(r'@(\w+)\.', line[7])[0] if self.QSUB_GENERAL_NAME in line[7] else None
 			yield {
 				'pid': int(line[0]),
-				'name': ' '.join(line[2:-6]),  # in case of space in name somehow
-				'user': line[-6],
-				'queue': findall(r'@(\w+)\.', line[-2])[0],
+				'name': ' '.join(line[2]),
+				'user': line[3],
+				'queue': qstr,
 			}
 
 	def processes(self, node):
@@ -59,7 +62,7 @@ class QsubQueue(Queue):
 			get process info from qstat (no need for caching)
 		"""
 		self._test_qstat()
-		self.log('loading processes for %s' % node, level = 3)
+		self._log('loading processes for %s' % node, level = 3)
 		return [pd for pd in self._get_qstat()]
 
 	def run_cmd(self, job, cmd):
@@ -82,14 +85,13 @@ class QsubQueue(Queue):
 			'cd \'%s\'' % job.directory,
 			' '.join(subcmd),
 		]
-		outp = run_cmds_on(cmds, node = job.node, queue = self)[0]
-		print outp
+		outp = run_cmds_on(cmds, node = job.node, queue = self)[1]
 		if not outp:
 			raise self.CmdException('job %s could not be started' % self)
 			
-		qid = findall(r'Your job (\d+) ("[^"]+") has been submitted', outp)
+		qid = findall(r'Your job (\d+) \("[^"]+"\) has been submitted', outp)
 		if not qid:
 			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp))
-		return qid
+		return qid[0]
 
 
