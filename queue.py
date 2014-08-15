@@ -369,7 +369,7 @@ class Queue(object):
 		elif self.limit:
 			W = max(self.limit - self.running_weight(), 0)
 			if not self.weight:
-				self._log('starting jobs with weight %d (no minimum)' % (W, self.weight))
+				self._log('starting jobs with weight %d (no minimum)' % W)
 			elif W < self.weight:
 				self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
 			else:
@@ -388,7 +388,6 @@ class Queue(object):
 			self.distribute_jobs(jobs = jobs)
 			start_count = 0
 			for node_nr, jobs in self.distribution.items():
-				print 'start_weight node_nr:', node_nr, 'jobs:', jobs, 'self.nodes:', self.nodes
 				for job in jobs:
 					job.cleanup(*args, **kwargs)
 					start_count += int(job.start(self.nodes[node_nr], *args, **kwargs))
