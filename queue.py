@@ -368,7 +368,9 @@ class Queue(object):
 			W = float('inf')
 		elif self.limit:
 			W = max(self.limit - self.running_weight(), 0)
-			if self.weight and W < self.weight:
+			if not self.weight:
+				self._log('starting jobs with weight %d (no minimum)' % (W, self.weight))
+			elif W < self.weight:
 				self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
 			else:
 				self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))

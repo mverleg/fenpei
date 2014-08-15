@@ -30,7 +30,8 @@ class QsubQueue(Queue):
 		"""
 			let qsub do the distributing by placing everything in general queue
 		"""
-		self._log('call to distribute %d jobs ignored; qsub will do distribution' % len(jobs))
+		self._log('call to distribute for %d jobs ignored; qsub will do distribution' % len(jobs))
+		self.all_nodes()
 		self.distribution = {0: jobs}
 
 	def _test_qstat(self):
