@@ -23,6 +23,7 @@ class ShJobSingle(ShJob):
 		subs_with_defaults = copy(self.get_default_subs())
 		subs_with_defaults.update(subs)
 		""" substitutions as job properties """
+		self.substitutions = subs_with_defaults
 		for key, val in subs_with_defaults.items():
 			setattr(self, key, val)
 		""" convert to per-file format to make a ShJob """
