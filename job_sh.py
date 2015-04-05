@@ -1,9 +1,9 @@
 
 """
-	extended base class for fenpei job that runs through an executable (incl. shell script);
-	this should be considered abstract
+	Extended base class for fenpei job that runs through an executable (incl. shell script);
+	this should be considered abstract.
 
-	as with :ref:Job, your custom job(s) should inherit from this job and extend the relevant methods.
+	As with :ref:Job, your custom job(s) should inherit from this job and extend the relevant methods.
 	Instead of :ref: prepare and :ref: start, you can override:
 
 	* get_files
@@ -25,18 +25,18 @@ class ShJob(Job):
 
 	def __init__(self, name, substitutions, weight = 1, batch_name = None):
 		"""
-			create a executable or shell job object, provided a number of files or directories which will be copied,
-			and (optionally) substitutions for each of them
+			Create a executable or shell job object, provided a number of files or directories which will be copied,
+			and (optionally) substitutions for each of them.
 
 			:param substitutions: a dictionary; keys are files or directories to be copied, values are dicts of
 			substitutions, or None; e.g. {'run.sh': {'R': 15, 'method': 'ccsd(t)'}} will copy
 			:raise ShJob.FileNotFound: subclass of OSError, indicating the files argument contains data that is invalid
 
-			for other parameters, see :ref: Job
+			For other parameters, see :ref: Job.
 
-			files will be copied if bool(files) is True (for substritutions), otherwise it will be attempted to
+			Files will be copied if bool(files) is True (for substritutions), otherwise it will be attempted to
 			hard-link them (use True to prevent that with no substitutions); if you use a directory, /path/ copies
-			files from it and /path copies the directory with files; directory substitutions apply to contained files
+			files from it and /path copies the directory with files; directory substitutions apply to contained files.
 		"""
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
 		super(ShJob, self).__init__(name = name, weight = weight, batch_name = batch_name)
@@ -55,7 +55,7 @@ class ShJob(Job):
 		"""
 			:return: the list of files and directories used by this code, which will be linked or copied
 
-			substitutions for non-static files should be supplied to the constructor
+			Substitutions for non-static files should be supplied to the constructor.
 		"""
 		raise NotImplementedError()
 
@@ -64,29 +64,29 @@ class ShJob(Job):
 		"""
 			:return: the path to the file which executes the job; should be in get_files()
 
-			files can be either string paths or tuples of (directory, pathname); in the later case pathname will be
-			copied (including directories), instead of assuming only the file is to be copied
+			Files can be either string paths or tuples of (directory, pathname); in the later case pathname will be
+			copied (including directories), instead of assuming only the file is to be copied.
 		"""
 		raise NotImplementedError()
 
 	class FileNotFound(OSError):
 		"""
-			file was not found exception
+			File was not found exception.
 		"""
 
 	def _fix_files(self):
 		"""
-			check that self.files is filled with valid values (files exist etc)
+			Check that self.files is filled with valid values (files exist etc).
 
-			turns all string filepaths into tuples of directory and filename
+			Turns all string filepaths into tuples of directory and filename.
 
-			expands all directories into lists of files
+			Expands all directories into lists of files.
 
 			:raise ShJob.FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
 		"""
 		def expand_dir(pre_path, post_path):
 			"""
-				expand a tuple (predir, postdir) into all the files in that directory
+				Expand a tuple (predir, postdir) into all the files in that directory.
 			"""
 			fullpath = join(pre_path, post_path)
 			subs = []
@@ -112,7 +112,7 @@ class ShJob(Job):
 
 	def is_prepared(self):
 		"""
-			see if prepared by checking the existence of every file
+			See if prepared by checking the existence of every file.
 		"""
 		for (filedir, filename) in self.files.keys():
 			if not isfile(join(self.directory, filename)):
@@ -124,7 +124,7 @@ class ShJob(Job):
 
 	def prepare(self, *args, **kwargs):
 		"""
-			prepares the job for execution by copying or linking all the files, and substituting values where applicable
+			Prepares the job for execution by copying or linking all the files, and substituting values where applicable.
 		"""
 		self._fix_files()
 		super(ShJob, self).prepare(*args, **kwargs)
@@ -161,7 +161,7 @@ class ShJob(Job):
 
 	def start(self, node, *args, **kwargs):
 		"""
-			start the job and store node/pid
+			Start the job and store node/pid.
 		"""
 		self._start_pre(*args, **kwargs)
 		""" nohup, bg and std redirect should be handeled by queue """

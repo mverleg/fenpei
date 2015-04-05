@@ -83,6 +83,7 @@ class QsubQueue(Queue):
 				'-q', self.QSUB_GENERAL_NAME,   # which que to wait in
 				'-N', job.name,                 # name of the job
 				'-l slots={0:d}'.format(job.weight), # number of slots = weight of job
+					#todo: check this; maybe it's threads rather than processes
 				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
 			'bash -c \'%s\'' % cmd,		    # the actual command (single quotes!)

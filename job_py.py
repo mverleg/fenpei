@@ -1,8 +1,8 @@
 
 """
-	extended base class for fenpei job that runs through a Python file; this should be considered abstract
+	Extended base class for fenpei job that runs through a Python file; this should be considered abstract.
 
-	as with :ref:Job, your custom job(s) should inherit from this job and extend the relevant methods.
+	As with :ref:Job, your custom job(s) should inherit from this job and extend the relevant methods.
 	Instead of :ref: prepare and :ref: start, you can override:
 
 	* run_template : template python file to copy
@@ -22,23 +22,23 @@ class PyJob(Job):
 
 	def run_template(self):
 		"""
-			return the path to the Python file to run (which is then copied and ran or added to a queue or something)
+			Return the path to the Python file to run (which is then copied and ran or added to a queue or something).
 		"""
 		return self.template_file
 
 	def run_file(self):
 		"""
-			return the path to the link/copy of .run_template(), whether or not it exists
+			Return the path to the link/copy of .run_template(), whether or not it exists.
 		"""
 		return join(self.directory, split(self.run_template())[1])
 
 	def prepare(self, *args, **kwargs):
 		"""
-			prepares the job for execution
+			Prepares the job for execution.
 
-			creates directory and copies run_template to run_file
+			Creates directory and copies run_template to run_file.
 
-			more steps are likely necessary for child classes
+			More steps are likely necessary for child classes.
 		"""
 		self.status = self.PREPARED
 		if not self.is_prepared():
@@ -50,7 +50,7 @@ class PyJob(Job):
 
 	def start(self, node, *args, **kwargs):
 		"""
-			start the job and store node/pid
+			Start the job and store node/pid.
 		"""
 		self._start_pre(*args, **kwargs)
 		pid = self.queue.run_job(node = node, filepath = self.run_file())
