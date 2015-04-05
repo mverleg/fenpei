@@ -3,9 +3,9 @@ import sys
 from subprocess import Popen, PIPE
 
 
-'''
+"""
 	Keep a list of processes to stop them from being terminated if their reference goes out of scope.
-'''
+"""
 process_memory = []
 
 
