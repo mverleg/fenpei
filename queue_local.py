@@ -33,7 +33,7 @@ class LocalQueue(Queue):
 
 	def processes(self, node):
 		"""
-			get processes on specific node and cache them
+			Get processes on specific node and cache them.
 		"""
 		self._log('loading processes for %s' % node, level = 3)
 		self.process_list[node] = []
@@ -50,7 +50,7 @@ class LocalQueue(Queue):
 
 	def run_cmd(self, job, cmd):
 		"""
-			see Queue.run_cmd(), but run everything on local machine
+			See Queue.run_cmd(), but run everything on local machine.
 		"""
 		assert job.directory
 		cmds = [
@@ -65,7 +65,7 @@ class LocalQueue(Queue):
 
 	def stop_job(self, node, pid):
 		"""
-			kill an individual job, specified by pid given during start ('pid' could also e.g. be a queue number)
+			Kill an individual job, specified by pid given during start ('pid' could also e.g. be a queue number).
 		"""
 		run_cmds(['kill %s' % pid], queue = self)
 

@@ -1,6 +1,6 @@
 
 """
-	Distribute jobs over multiple machines by means of ssh
+	Distribute jobs over multiple machines by means of ssh.
 
 	- find quiet nodes
 	- start jobs if space
@@ -46,14 +46,14 @@ class Queue(object):
 
 	def _log(self, txt, level = 1):
 		"""
-			report to user
+			Report to user.
 		"""
 		if level <= self.show:
 			print txt
 
 	def all_nodes(self):
 		"""
-			get a list of all nodes (their ssh addresses)
+			Get a list of all nodes (their ssh addresses).
 		"""
 		if self.load_nodes():
 			return False
@@ -65,7 +65,7 @@ class Queue(object):
 
 	def node_availability(self):
 		"""
-			check the processor use of all nodes
+			Check the processor use of all nodes.
 		"""
 		if self.load_nodes():
 			return False
@@ -95,7 +95,7 @@ class Queue(object):
 
 	def save_nodes(self):
 		"""
-			save the list of nodes to cache
+			Save the list of nodes to cache.
 		"""
 		with open('%s/timestamp.nodes' % TMP_DIR, 'w+') as fh:
 			fh.write(str(time()))
@@ -107,7 +107,7 @@ class Queue(object):
 
 	def unsave_nodes(self):
 		"""
-			remove cached node data
+			Remove cached node data.
 		"""
 		try:
 			remove('%s/timestamp.nodes' % TMP_DIR)
@@ -119,7 +119,7 @@ class Queue(object):
 
 	def load_nodes(self, memory_time = 10 * 60):
 		"""
-			load use restart (-e) to skip such jobs othe list of nodes from cache, if not expired
+			Load use restart (-e) to skip such jobs othe list of nodes from cache, if not expired.
 		"""
 		try:
 			with open('%s/timestamp.nodes' % TMP_DIR, 'r') as fh:
@@ -141,7 +141,7 @@ class Queue(object):
 
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
-			distribute jobs favourably by means of kind-of-Monte-Carlo (only favourable moves)
+			Distribute jobs favourably by means of kind-of-Monte-Carlo (only favourable moves).
 
 			:param jobs: (optional) the jobs to be distributed; uses self.jobs if not provided
 			:param max_reject_spree: (optional) stopping criterion; stop when this many unfavourable moves tried in a row
@@ -208,7 +208,7 @@ class Queue(object):
 
 	def text_distribution(self, distribution):
 		"""
-			text visualisation of the distribution of jobs over nodes
+			Text visualisation of the distribution of jobs over nodes.
 		"""
 		lines = []
 		no_job_nodes = []
@@ -244,7 +244,7 @@ class Queue(object):
 
 	def total_weight(self, jobs = None):
 		"""
-			total weight of the provided jobs, or the added ones if None
+			Total weight of the provided jobs, or the added ones if None.
 		"""
 		if jobs is None:
 			jobs = self.jobs
@@ -252,7 +252,7 @@ class Queue(object):
 
 	def processes(self, node):
 		"""
-			get processes on specific node and cache them
+			Get processes on specific node and cache them.
 		"""
 		if node in self.process_time.keys():
 			if time() - self.process_time[node] < 3:
@@ -282,8 +282,8 @@ class Queue(object):
 
 	def add_jobs(self, jobs):
 		"""
-			add jobs to the queue
-			recommended to use .job() instead
+			Add jobs to the queue.
+			Recommended to use .job() instead.
 		"""
 
 		for job in jobs:
@@ -301,17 +301,19 @@ class Queue(object):
 
 	def run_job(self, job, filepath):
 		"""
-			start an individual job, specified by a Python file
+			Start an individual job, specified by a Python file.
 		"""
 		cmd = 'nohup python \'%s\' &> out.log &' % basename(filepath)
 		return self.run_cmd(job, cmd)
 
 	class CmdException(Exception):
-		""" an external (e.g. Popen shell script) could not be run """
+		"""
+			An external (e.g. Popen shell script) could not be run.
+		"""
 
 	def run_cmd(self, job, cmd):
 		"""
-			start an individual job by means of a shell command
+			Start an individual job by means of a shell command.
 
 			:param job: the job that's being started this way
 			:param cmd: shell commands to run (should include nohup and & as appropriate)
@@ -330,13 +332,13 @@ class Queue(object):
 
 	def stop_job(self, node, pid):
 		"""
-			kill an individual job, specified by pid given during start ('pid' could also e.g. be a queue number)
+			Kill an individual job, specified by pid given during start ('pid' could also e.g. be a queue number).
 		"""
 		run_cmds_on(['kill %s' % pid], node = node, queue = self)
 
 	def prepare(self, *args, **kwargs):
 		"""
-			prepare all the currently added jobs (make files etc)
+			Prepare all the currently added jobs (make files etc).
 		"""
 		prepare_count = 0
 		for job in self.jobs:
@@ -345,19 +347,19 @@ class Queue(object):
 
 	def running_count(self):
 		"""
-			how many running jobs
+			How many running jobs.
 		"""
 		return len(self.get_status()[1][Job.RUNNING])
 
 	def running_weight(self):
 		"""
-			total weight of running jobs
+			Total weight of running jobs.
 		"""
 		return sum(job.weight for job in self.get_status()[1][Job.RUNNING])
 
 	def start(self):
 		"""
-			calls corresponding functions depending on flags (e.g. -z, -w, -q, -e)
+			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
 		W = None
 		if self.all:
@@ -381,7 +383,7 @@ class Queue(object):
 
 	def start_weight(self, weight, *args, **kwargs):
 		"""
-			(re)start jobs with an approximation of total weight
+			(Re)start jobs with an approximation of total weight.
 		"""
 		jobs = self.get_jobs_by_weight(weight)
 		if len(jobs):
@@ -397,7 +399,7 @@ class Queue(object):
 
 	def get_jobs_by_weight(self, max_weight):
 		"""
-			find jobs with an approximation of total weight
+			Find jobs with an approximation of total weight.
 		"""
 		""" find eligible jobs (in specific order) """
 		job_status = self.get_status()[1]
@@ -428,7 +430,7 @@ class Queue(object):
 
 	def fix(self, *args, **kwargs):
 		"""
-			fix jobs, e.g. after fixes and updates
+			Fix jobs, e.g. after fixes and updates.
 		"""
 		fix_count = 0
 		for job in self.jobs:
@@ -437,7 +439,7 @@ class Queue(object):
 
 	def kill(self, *args, **kwargs):
 		"""
-			kill all the currently added job processes
+			Kill all the currently added job processes.
 		"""
 		kill_count = 0
 		for job in self.jobs:
@@ -446,7 +448,7 @@ class Queue(object):
 
 	def cleanup(self, *args, **kwargs):
 		"""
-			clean up all the currently added jobs (remove files)
+			Clean up all the currently added jobs (remove files).
 		"""
 		clean_count = 0
 		for job in self.jobs:
@@ -456,7 +458,7 @@ class Queue(object):
 
 	def get_status(self):
 		"""
-			get list of statusses
+			Get list of statusses.
 		"""
 		status_count = defaultdict(int)
 		status_list = defaultdict(list)
@@ -468,7 +470,7 @@ class Queue(object):
 
 	def show_status(self, status_count, status_list):
 		"""
-			show list of statusses
+			Show list of statusses.
 		"""
 
 		self._log('status for %d jobs:' % len(self.jobs), level = 1)
@@ -478,7 +480,7 @@ class Queue(object):
 
 	def continuous_status(self, delay = 5):
 		"""
-			keep refreshing status until ctrl+C
+			Keep refreshing status until ctrl+C.
 		"""
 
 		self._log('monitoring status; use cltr+C to terminate')
@@ -507,7 +509,7 @@ class Queue(object):
 
 	def status(self):
 		"""
-			get and show the status of jobs
+			Get and show the status of jobs.
 		"""
 		status_count, status_list = self.get_status()
 		self.show_status(status_count, status_list)
@@ -524,7 +526,7 @@ class Queue(object):
 
 	def summary(self, *args, **kwargs):
 		"""
-			summarize the results of all jobs, grouped by type
+			Summarize the results of all jobs, grouped by type.
 		"""
 		for cls, jobs in group_by(self.jobs, lambda job: job.group_cls or job.__class__).items():
 			self._log('summary for %s' % cls.__name__)
@@ -532,9 +534,19 @@ class Queue(object):
 			cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
 		show()
 
+#	def _get_argparser(self):
+#		"""
+#			Return the singleton instance of the ArgumentParser. Useful when overriding run_argv to add more arguments.
+#		"""
+#		try:
+#			self._parser_cache
+#		except AttributeError:
+#			self._parser_cache = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
+#		return self._parser_cache
+
 	def run_argv(self):
 		"""
-			analyze sys.argv and run commands based on it
+			Analyze sys.argv and run commands based on it.
 		"""
 		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
@@ -555,6 +567,7 @@ class Queue(object):
 		parser.add_argument('-s', '--status', dest = 'actions', action = 'append_const', const = self.status, help = 'show job status')
 		parser.add_argument('-m', '--monitor', dest = 'actions', action = 'append_const', const = self.continuous_status, help = 'show job status every few seconds')
 		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = self.summary, help = 'collect and show the result of jobs')
+		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
 
 		actions = args.actions or []

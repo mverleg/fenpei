@@ -3,7 +3,9 @@ import sys
 from subprocess import Popen, PIPE
 
 
-'''  keep a list of processes to stop them from being terminated if their reference goes out of scope '''
+'''
+	Keep a list of processes to stop them from being terminated if their reference goes out of scope.
+'''
 process_memory = []
 
 
@@ -25,7 +27,7 @@ def run_shell(cmd, wait):
 
 def run_cmds_on(cmds, node, wait = True, queue = None):
 	"""
-		run several commands on a local or remote machine
+		Run several commands on a local or remote machine.
 
 		:param cmds: list of command lines, non Popen style words
 		:param node:

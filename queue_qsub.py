@@ -15,7 +15,7 @@ class QsubQueue(Queue):
 
 	def all_nodes(self):
 		"""
-			specific nodes are irrelevant; everything in main queue
+			Specific nodes are irrelevant; everything in main queue.
 		"""
 		if not super(QsubQueue, self).all_nodes():
 			return False
@@ -28,7 +28,7 @@ class QsubQueue(Queue):
 
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
-			let qsub do the distributing by placing everything in general queue
+			Let qsub do the distributing by placing everything in general queue.
 		"""
 		self._log('call to distribute for %d jobs ignored; qsub will do distribution' % len(jobs))
 		self.all_nodes()
@@ -58,7 +58,7 @@ class QsubQueue(Queue):
 
 	def processes(self, node):
 		"""
-			get process info from qstat (no need for caching)
+			Get process info from qstat (no need for caching).
 		"""
 		self._test_qstat()
 		self._log('loading processes for %s' % node, level = 3)
@@ -66,13 +66,13 @@ class QsubQueue(Queue):
 
 	def stop_job(self, node, pid):
 		"""
-			remove individual job from queue
+			Remove individual job from queue.
 		"""
 		run_cmds(['qdel %s' % pid], queue = self)
 
 	def run_cmd(self, job, cmd):
 		"""
-			start an individual job by means of queueing a shell command
+			Start an individual job by means of queueing a shell command.
 		"""
 		self._test_qstat()
 		assert job.directory
@@ -82,6 +82,7 @@ class QsubQueue(Queue):
 				'-cwd',                         # use the current working directory
 				'-q', self.QSUB_GENERAL_NAME,   # which que to wait in
 				'-N', job.name,                 # name of the job
+				'-l slots={0:d}'.format(job.weight), # number of slots = weight of job
 				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
 			'bash -c \'%s\'' % cmd,		    # the actual command (single quotes!)
@@ -98,5 +99,10 @@ class QsubQueue(Queue):
 		if not qid:
 			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp))
 		return int(qid)
+
+#	def run_argv(self):
+#		parser = self._get_argparser()
+#		parser.add_argument('--max_qsub_jobs', dest = 'max_qsub_jobs', action = 'store', type = int, default = None, help = 'Limit the number of jobs by user allowed to be running on the queue.')
+#		super()
 
 
