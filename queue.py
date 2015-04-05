@@ -290,6 +290,7 @@ class Queue(object):
 			assert isinstance(job, Job)
 			job.queue = self
 		self.jobs += jobs
+		return self
 
 	def get_jobs(self):
 		return self.jobs

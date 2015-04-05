@@ -11,7 +11,7 @@ from fenpei.job_sh import ShJob
 
 class ShJobSingle(ShJob):
 
-	def __init__(self, name, subs, sub_files = [], nosub_files = [], weight = 1, batch_name = None):
+	def __init__(self, name, subs, sub_files = [], nosub_files = [], weight = 1, batch_name = None, defaults_version = 1):
 		"""
 			Similar to ShJob.
 
@@ -20,7 +20,7 @@ class ShJobSingle(ShJob):
 			:param nosub_files: files as-is (no substitutions)
 		"""
 		""" Defaults for substitutions. """
-		subs_with_defaults = copy(self.get_default_subs())
+		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
 		subs_with_defaults.update(subs)
 		""" Substitutions as job properties. """
 		self.substitutions = subs_with_defaults
@@ -32,7 +32,7 @@ class ShJobSingle(ShJob):
 		super(ShJobSingle, self).__init__(name = name, substitutions = substitutions, weight = weight, batch_name = batch_name)
 
 	@classmethod
-	def get_default_subs(cls):
+	def get_default_subs(cls, version = 1):
 		"""
 			:return: default values for substitutions
 		"""
