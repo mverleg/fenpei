@@ -10,6 +10,7 @@
 	* run_file
 """
 
+from socket import gethostname
 from collections import Mapping
 from os import listdir
 from os.path import join, basename, isdir, isfile, dirname, exists
@@ -19,11 +20,12 @@ from fenpei.job import Job
 from fenpei.shell import run_shell
 from datetime import datetime
 from time import time
+from shell import git_current_hash
 
 
 class ShJob(Job):
 
-	def __init__(self, name, substitutions, weight = 1, batch_name = None):
+	def __init__(self, name, substitutions, weight = 1, batch_name = None, new_format = False):
 		"""
 			Create a executable or shell job object, provided a number of files or directories which will be copied,
 			and (optionally) substitutions for each of them.
@@ -41,13 +43,21 @@ class ShJob(Job):
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
 		super(ShJob, self).__init__(name = name, weight = weight, batch_name = batch_name)
 		timestr = datetime.now().strftime('%Y-%m-%d %H:%M') + ' (%d)' % time()
+		git_commit = git_current_hash()
 		for filepath, subst in substitutions.items():
 			if isinstance(subst, Mapping):
 				subst['name'] = name
 				subst['now'] = timestr
 				subst['directory'] = self.directory
+				subst['hostname'] = gethostname()
+				subst['git_commit'] = git_commit
+			elif subst is None:
+				pass
+			else:
+				raise NotImplementedError('I\'ve not thought about this, maybe it\'s not needed anyway.')
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
+		self.new_format = new_format
 		self._fix_files()
 
 	@classmethod
@@ -114,11 +124,11 @@ class ShJob(Job):
 		"""
 			See if prepared by checking the existence of every file.
 		"""
-		for (filedir, filename) in self.files.keys():
+		for filedir, filename in self.files.keys():
 			if not isfile(join(self.directory, filename)):
 				self._log('%s is not prepared because %s (and possibly more) are missing' % (self.name, filename), 3)
 				return False
-		if not isfile(self.run_file()):
+		if not isfile(join(self.directory, self.run_file())):
 			return False
 		return True
 
@@ -136,17 +146,27 @@ class ShJob(Job):
 				self._log('%s is not prepared but already has file %s' % (self.name, filepath), 2)
 				break
 			mkdirp(join(self.directory, dirname(filename)))
-			if bool(subst):
+			if subst:
 				""" copy files and possibly substitute """
 				if isinstance(subst, Mapping):
 					with open(filepath, 'r') as fhr:
 						with open(join(self.directory, filename), 'w+') as fhw:
-							try:
-								fhw.write(fhr.read() % subst)
-							except KeyError, err:
-								self._log('missing key "%s" in substitution of "%s"; job not prepared' % (str(err).strip('\''), filename))
-								self.cleanup()
-								return False
+							""" Split into lines for better error messages. """
+							for nr, line in enumerate(fhr.readlines()):
+								try:
+									if self.new_format:
+										fhw.write(line.format(**subst))
+									else:
+										fhw.write((line % subst))
+								except KeyError as err:
+									self._log('missing key "%s" in substitution of "%s" on line %d; job not prepared' % (str(err).strip('\''), filename, nr + 1))
+									self.cleanup()
+									return False
+								except ValueError as err:
+									self._log('substitution of "%s" on line %d encountered a formatting error; job not prepared' % (filename, nr + 1))
+									self._log(u'\t' + str(err))
+									self.cleanup()
+									return False
 				else:
 					copyfile(filepath, join(self.directory, filename))
 			else:
@@ -165,11 +185,9 @@ class ShJob(Job):
 		"""
 		self._start_pre(*args, **kwargs)
 		""" nohup, bg and std redirect should be handeled by queue """
-		#cmd = 'nohup ./%s &> out.log &' % self.run_file()
 		cmd = './%s' % self.run_file()
 		pid = self.queue.run_cmd(job = self, cmd = cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
-
 
 

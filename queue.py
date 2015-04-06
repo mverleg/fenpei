@@ -10,6 +10,7 @@
 
 """
 
+from tempfile import gettempdir
 from time import time, sleep
 from random import sample
 from bardeen.collection import group_by
@@ -18,12 +19,16 @@ from datetime import datetime
 from collections import defaultdict
 from argparse import ArgumentParser
 from os import remove
-from os.path import basename
+from os.path import basename, join
 from numpy import ceil
 from bardeen.mpl import show
+from bardeen.system import mkdirp
 from shell import run_cmds_on
-from settings import TMP_DIR
 from fenpei.job import Job
+
+
+TMP_DIR = join(gettempdir(), 'fenpei')
+mkdirp(TMP_DIR)
 
 
 class Queue(object):

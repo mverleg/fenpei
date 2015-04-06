@@ -60,3 +60,13 @@ def run_cmds(cmds, wait = True, queue = None):
 	return run_cmds_on(cmds, node = None, wait = wait, queue = queue)
 
 
+def git_current_hash():
+	process = Popen('git rev-parse --verify HEAD', shell = True, stdout = PIPE, stderr = PIPE)
+	outp, err = process.communicate()
+	if err:
+		return '[no git commit found]'
+	return outp.strip()
+
+
+if __name__ == '__main__':
+	print git_current_hash()

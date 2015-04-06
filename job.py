@@ -19,8 +19,8 @@ from bardeen.system import mkdirp
 from time import time
 from os import remove
 from os.path import join, isdir
-from settings import CALC_DIR
 from shutil import rmtree
+from settings import CALC_DIR
 
 
 class Job(object):
@@ -237,10 +237,10 @@ class Job(object):
 			if not self.queue is None:
 				if not self.queue.force:
 					self._log('you are trying to clean up a job that is running or completed; ' + \
-					    'if you are sure you want to do this, use -f')
+						'if you are sure you want to do this, use -f')
 					exit()
 		if isdir(self.directory):
-			rmtree(self.directory)
+			rmtree(self.directory, ignore_errors = True)
 			return True
 		return False
 
