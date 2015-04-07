@@ -1,8 +1,8 @@
 
 """
-	base class for fenpei job; this should be considered abstract
+	Base class for fenpei job; this should be considered abstract.
 
-	your custom job(s) should inherit from this job and extend the relevant methods, such as
+	Your custom job(s) should inherit from this job and extend the relevant methods, such as::
 
 	* is_prepared
 	* is_complete
@@ -32,12 +32,12 @@ class Job(object):
 	node = None
 	pid = None
 	status = None
-	''' set a group_cls to report results together with another class (that has the same output format) '''
+	''' Set a group_cls to report results together with another class (that has the same output format). '''
 	group_cls = None
 
 	def __init__(self, name, weight = 1, batch_name = None):
 		"""
-			create a Job object
+			Create a Job object.
 
 			:param name: unique name consisting of letters, numbers, dot (.) and underscore (_) **YOU need to make sure that name is unique (bijectively maps to job)**
 			:param weight: the relative resource use of this job (higher relative weights means fewer jobs will be scheduled together)
@@ -61,7 +61,8 @@ class Job(object):
 
 	def _log(self, txt, *args, **kwargs):
 		"""
-			.queue is not always set, so have own logging function
+			Logging function.
+			.queue is not always set, so have own logging function.
 		"""
 		if self.queue is None:
 			if len(txt.strip()):
@@ -73,7 +74,7 @@ class Job(object):
 
 	def save(self):
 		"""
-			save information about a running job to locate the process
+			Save information about a running job to locate the process.
 		"""
 		assert self.node is not None
 		assert self.pid is not None
@@ -83,7 +84,7 @@ class Job(object):
 
 	def unsave(self):
 		"""
-			remove the stored process details
+			Remove the stored process details.
 		"""
 		try:
 			remove('%s/node_pid.job' % self.directory)
@@ -93,7 +94,7 @@ class Job(object):
 
 	def load(self):
 		"""
-			load process details from cache
+			Load process details from cache.
 		"""
 		try:
 			with open('%s/node_pid.job' % self.directory, 'r') as fh:
@@ -132,8 +133,9 @@ class Job(object):
 
 	def is_complete(self):
 		"""
-			check if job completed succesfully
-			needs to be extended by child class
+			Check if job completed succesfully.
+
+			Needs to be extended by child class.
 		"""
 		if not self.is_prepared():
 			return False
@@ -141,7 +143,7 @@ class Job(object):
 
 	def find_status(self):
 		"""
-			find status using is_* methods
+			Find status using is_* methods.
 		"""
 		def check_status_indicators(self):
 			if self.is_complete():
@@ -159,9 +161,9 @@ class Job(object):
 
 	def prepare(self, *args, **kwargs):
 		"""
-			prepares the job for execution
+			Prepares the job for execution.
 
-			more steps are likely necessary for child classes
+			More steps are likely necessary for child classes.
 		"""
 		self.status = self.PREPARED
 		if not self.is_prepared():
@@ -172,7 +174,7 @@ class Job(object):
 
 	def _start_pre(self, *args, **kwargs):
 		"""
-			some checks at the beginning of .start()
+			Some checks at the beginning of .start().
 		"""
 		if self.is_running() or self.is_complete():
 			if not self.queue is None:
@@ -188,7 +190,7 @@ class Job(object):
 
 	def _start_post(self, node, pid, *args, **kwargs):
 		"""
-			some bookkeeping at the end of .start()
+			Some bookkeeping at the end of .start().
 		"""
 		self.node = node
 		self.pid = pid
@@ -199,7 +201,7 @@ class Job(object):
 
 	def start(self, node, *args, **kwargs):
 		"""
-			start the job and store node/pid
+			Start the job and store node/pid.
 		"""
 		self._start_pre(*args, **kwargs)
 		"""
