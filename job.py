@@ -15,6 +15,7 @@
 """
 
 from re import match
+from sys import stdout
 from bardeen.system import mkdirp
 from time import time
 from os import remove
@@ -66,9 +67,9 @@ class Job(object):
 		"""
 		if self.queue is None:
 			if len(txt.strip()):
-				print txt
+				stdout.write(txt + '\n')
 			else:
-				print '(empty)'
+				stdout.write('(empty)\n')
 		else:
 			self.queue._log(txt, *args, **kwargs)
 
@@ -212,17 +213,17 @@ class Job(object):
 
 	def fix(self, *args, **kwargs):
 		"""
-			some code that can be ran to fix jobs, e.g. after bugfixes or updates
+			Some code that can be ran to fix jobs, e.g. after bugfixes or updates.
 
-			needs to be implemented by children for the specific fix applicable (if just restarting is not viable)
+			Needs to be implemented by children for the specific fix applicable (if just restarting is not viable).
 		"""
 		return False
 
 	def kill(self, *args, **kwargs):
 		"""
-			kills the current job if running using queue methods
+			Kills the current job if running using queue methods.
 
-			(any overriding should probably happen in :ref: queue.processes and :ref: queue.stop_job
+			Any overriding should probably happen in :ref: queue.processes and :ref: queue.stop_job.
 		"""
 		if self.is_running():
 			assert self.node is not None
@@ -248,10 +249,9 @@ class Job(object):
 
 	def result(self, *args, **kwargs):
 		"""
-			collects the result of the completed job
+			Collects the result of the completed job.
 
-			:return: result of the job; only requirement is that the result be compatible
-			with :ref: summary (and other jobs), but a dict is suggested
+			:return: result of the job; only requirement is that the result be compatible with :ref: summary (and other jobs), but a dict is suggested.
 		"""
 		if not self.is_complete():
 			return None
@@ -260,13 +260,12 @@ class Job(object):
 	@classmethod
 	def summary(cls, results, jobs, *args, **kwargs):
 		"""
-			show some sort of summary for all jobs of this class (implementation as you see fit)
-
-			(class method, called once for all jobs)
+			Show some sort of summary for all jobs of this class (implementation as you see fit).
 
 			:param results: list that contains the result dictionary for any jobs that don't return None;
 			the ``'job'`` item is set to the applicable job
 			:param jobs: list of jobs which are of the correct type (this class or group_cls)
 		"""
+		#(class method, called once for all jobs)
 
 

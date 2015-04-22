@@ -13,10 +13,10 @@ from xml.dom.minidom import parse
 
 class QsubQueue(Queue):
 
-	QSUB_GENERAL_NAME = 'queuename'
+	DEFAULT_QSUB_NAME = 'queuename'
 
 	def __init__(self, jobs = None, qname = None):
-		self.qname = qname or self.QSUB_GENERAL_NAME
+		self.qname = qname or self.DEFAULT_QSUB_NAME
 		super(QsubQueue, self).__init__(jobs = jobs)
 
 	def all_nodes(self):
@@ -26,7 +26,7 @@ class QsubQueue(Queue):
 		if not super(QsubQueue, self).all_nodes():
 			return False
 		self._log('no specific nodes; all to general queue')
-		self.nodes = [self.QSUB_GENERAL_NAME]
+		self.nodes = [self.qname]
 		return True
 
 	def node_availability(self):
@@ -114,7 +114,6 @@ class QsubQueue(Queue):
 			'cd \'%s\'' % job.directory,
 			' '.join(subcmd),
 		]
-		print cmds
 		outp = run_cmds(cmds, queue = self)[1]
 		self._log(cmds[-1], level = 3)
 		if not outp:

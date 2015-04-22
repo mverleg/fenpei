@@ -16,7 +16,7 @@ from random import sample
 from bardeen.collection import group_by
 from bardeen.inout import reprint
 from datetime import datetime
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from argparse import ArgumentParser
 from os import remove
 from os.path import basename, join
@@ -285,16 +285,22 @@ class Queue(object):
 				self.process_list[node].append(ps_dict)
 		return self.process_list[node]
 
+	def add_job(self, job):
+		"""
+			Add single job to the queue.
+		"""
+		assert isinstance(job, Job)
+		job.queue = self
+		self.jobs.append(job)
+		return self
+
 	def add_jobs(self, jobs):
 		"""
-			Add jobs to the queue.
-			Recommended to use .job() instead.
+			Add list of jobs to the queue.
 		"""
 
 		for job in jobs:
-			assert isinstance(job, Job)
-			job.queue = self
-		self.jobs += jobs
+			self.add_job(job)
 		return self
 
 	def get_jobs(self):
@@ -539,6 +545,34 @@ class Queue(object):
 			results = [job.result() for job in jobs]
 			cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
 		show()
+
+	def compare_jobs(self, *parameters):
+		"""
+			Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
+
+			:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are parameter values for a single parameter, otherwise tuples.
+		"""
+		assert len(parameters) > 0, 'Provide a job attribute to compare jobs.'
+		if len(parameters) == 1:
+			jobmap = {}
+			for job in self.jobs:
+				assert hasattr(job, parameters[0]), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(parameters[0], job)
+				assert getattr(job, parameters[0]) not in jobmap, 'Can not compare jobs on "{0:s}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters[0], jobmap[getattr(job, parameters[0])], job, getattr(job, parameters[0]))
+				jobmap[getattr(job, parameters[0])] = job
+			return OrderedDict((key, jobmap[key]) for key in sorted(jobmap.keys()))
+		else:
+			raise NotImplementedError('Useful, but not yet needed.')
+
+	def compare_results(self, *parameters):
+		"""
+			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
+		"""
+		resultmap = OrderedDict()
+		for key, job in self.compare_jobs(*parameters).iteritems():
+			res = job.result()
+			if res:
+				resultmap[key] = res
+		return resultmap
 
 #	def _get_argparser(self):
 #		"""
