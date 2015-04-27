@@ -47,6 +47,7 @@ class ShJob(Job):
 		for filepath, subst in substitutions.items():
 			if isinstance(subst, Mapping):
 				subst['name'] = name
+				subst['batch_name'] = batch_name
 				subst['now'] = timestr
 				subst['directory'] = self.directory
 				subst['hostname'] = gethostname()

@@ -114,13 +114,13 @@ class QsubQueue(Queue):
 			'cd \'%s\'' % job.directory,
 			' '.join(subcmd),
 		]
-		outp = run_cmds(cmds, queue = self)[1]
+		outp = run_cmds(cmds, queue = self)
 		self._log(cmds[-1], level = 3)
-		if not outp:
+		if not outp or not outp[1]:
 			raise self.CmdException('job %s could not be started (output is empty)' % job)
-		qid = findall(r'Your job (\d+) \("[^"]+"\) has been submitted', outp)[0]
+		qid = findall(r'Your job (\d+) \("[^"]+"\) has been submitted', outp[1])[0]
 		if not qid:
-			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp))
+			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp[1]))
 		return int(qid)
 
 #	def run_argv(self):

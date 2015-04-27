@@ -44,7 +44,7 @@ class Job(object):
 			:param weight: the relative resource use of this job (higher relative weights means fewer jobs will be scheduled together)
 			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
 		"""
-		assert match('^\w[\w\._-]*$', name)
+		assert match(r'^\w[/\w\._-]*$', name), 'This is not a valid name'
 		assert weight > 0
 		self.name = name
 		self.weight = weight
@@ -257,15 +257,14 @@ class Job(object):
 			return None
 		return None
 
-	@classmethod
-	def summary(cls, results, jobs, *args, **kwargs):
-		"""
-			Show some sort of summary for all jobs of this class (implementation as you see fit).
-
-			:param results: list that contains the result dictionary for any jobs that don't return None;
-			the ``'job'`` item is set to the applicable job
-			:param jobs: list of jobs which are of the correct type (this class or group_cls)
-		"""
-		#(class method, called once for all jobs)
+	#@classmethod
+	#def summary(cls, results, jobs, *args, **kwargs):
+	#	"""
+	#		Show some sort of summary for all jobs of this class (implementation as you see fit).
+	#		:param results: list that contains the result dictionary for any jobs that don't return None;
+	#		the ``'job'`` item is set to the applicable job
+	#		:param jobs: list of jobs which are of the correct type (this class or group_cls)
+	#	"""
+	#	#(class method, called once for all jobs)
 
 

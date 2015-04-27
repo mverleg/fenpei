@@ -9,6 +9,7 @@
 	- restart failed
 
 """
+from functools import partial
 
 from tempfile import gettempdir
 from time import time, sleep
@@ -536,15 +537,17 @@ class Queue(object):
 		self._log('retrieved results for %d jobs' % len(self.jobs))
 		return results
 
-	def summary(self, *args, **kwargs):
-		"""
-			Summarize the results of all jobs, grouped by type.
-		"""
-		for cls, jobs in group_by(self.jobs, lambda job: job.group_cls or job.__class__).items():
-			self._log('summary for %s' % cls.__name__)
-			results = [job.result() for job in jobs]
-			cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
-		show()
+	@staticmethod
+	def summary(queue):
+		print 'No summary function (queue "{0:s}"). Attach a staticmethod .summary(queue) to the queue.'.format(queue.name)
+		#"""
+		#	Summarize the results of all jobs, grouped by type.
+		#"""
+		#for cls, jobs in group_by(self.jobs, lambda job: job.group_cls or job.__class__).items():
+		#	self._log('summary for %s' % cls.__name__)
+		#	results = [job.result() for job in jobs]
+		#	cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
+		#show()
 
 	def compare_jobs(self, *parameters):
 		"""
@@ -574,20 +577,11 @@ class Queue(object):
 				resultmap[key] = res
 		return resultmap
 
-#	def _get_argparser(self):
-#		"""
-#			Return the singleton instance of the ArgumentParser. Useful when overriding run_argv to add more arguments.
-#		"""
-#		try:
-#			self._parser_cache
-#		except AttributeError:
-#			self._parser_cache = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
-#		return self._parser_cache
-
 	def run_argv(self):
 		"""
 			Analyze sys.argv and run commands based on it.
 		"""
+		def summary(queue = self): self.summary(queue)
 		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
 		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of warning')
@@ -603,10 +597,10 @@ class Queue(object):
 		parser.add_argument('-q', '--limit', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
 		parser.add_argument('-k', '--kill', dest = 'actions', action = 'append_const', const = self.kill, help = 'terminate the calculation of all the running jobs')
 		parser.add_argument('-r', '--remove', dest = 'actions', action = 'append_const', const = self.cleanup, help = 'clean up all the job files')
-		parser.add_argument('-g', '--fix', dest = 'actions', action = 'append_const', const = self.fix, help = 'fix jobs (e.g. after update)')
+		parser.add_argument('-g', '--fix', dest = 'actions', action = 'append_const', const = self.fix, help = 'fix jobs, check cache etc (e.g. after update)')
 		parser.add_argument('-s', '--status', dest = 'actions', action = 'append_const', const = self.status, help = 'show job status')
 		parser.add_argument('-m', '--monitor', dest = 'actions', action = 'append_const', const = self.continuous_status, help = 'show job status every few seconds')
-		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = self.summary, help = 'collect and show the result of jobs')
+		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = summary, help = 'run analysis code to summarize results')
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
 
@@ -646,5 +640,7 @@ class Queue(object):
 		if actions:
 			for action in args.actions:
 				action()
+
+		return [str(action.__name__) for action in actions]
 
 
