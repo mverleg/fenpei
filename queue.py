@@ -539,7 +539,7 @@ class Queue(object):
 
 	@staticmethod
 	def summary(queue):
-		print 'No summary function (queue "{0:s}"). Attach a staticmethod .summary(queue) to the queue.'.format(queue.name)
+		print 'No summary function (queue "{0:s}"). Attach a static method .summary(queue) to the queue.'.format(queue.name)
 		#"""
 		#	Summarize the results of all jobs, grouped by type.
 		#"""
