@@ -563,16 +563,17 @@ class Queue(object):
 		else:
 			raise NotImplementedError('Useful, but not yet needed.')
 
-	def compare_results(self, add_input=True, *parameters):
+	def compare_results(self, *parameters):
 		"""
 			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
 		resultmap = OrderedDict()
-		for key, job in self.compare_jobs(*parameters).iteritems():
+		for key, job in self.compare_jobs(*parameters).items():
 			res = job.result()
 			if res:
-				out = job.get_input()
-				resultmap[key] = res
+				out = OrderedDict((('in', job.get_input()),))
+				out.update(res)
+				resultmap[key] = out
 		return resultmap
 
 	def run_argv(self):

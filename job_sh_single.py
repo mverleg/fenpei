@@ -64,7 +64,9 @@ class ShJobSingle(ShJob):
 		return []
 
 	def get_input(self):
-		print '\n\n***GET_INPUT***\n\nqqq'
-		print(self.files.keys())
+		subfiles = self.get_sub_files()
+		if subfiles:
+			return self.files[subfiles[0]]
+		return None
 
 
