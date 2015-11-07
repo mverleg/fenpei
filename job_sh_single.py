@@ -63,4 +63,8 @@ class ShJobSingle(ShJob):
 		"""
 		return []
 
+	def get_input(self):
+		print '\n\n***GET_INPUT***\n\nqqq'
+		print(self.files.keys())
+
 

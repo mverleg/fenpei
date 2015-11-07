@@ -9,12 +9,10 @@
 	- restart failed
 
 """
-from functools import partial
 
 from tempfile import gettempdir
 from time import time, sleep
 from random import sample
-from bardeen.collection import group_by
 from bardeen.inout import reprint
 from datetime import datetime
 from collections import defaultdict, OrderedDict
@@ -22,7 +20,6 @@ from argparse import ArgumentParser
 from os import remove
 from os.path import basename, join
 from numpy import ceil
-from bardeen.mpl import show
 from bardeen.system import mkdirp
 from shell import run_cmds_on
 from fenpei.job import Job
@@ -566,7 +563,7 @@ class Queue(object):
 		else:
 			raise NotImplementedError('Useful, but not yet needed.')
 
-	def compare_results(self, *parameters):
+	def compare_results(self, add_input=True, *parameters):
 		"""
 			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
@@ -574,6 +571,7 @@ class Queue(object):
 		for key, job in self.compare_jobs(*parameters).iteritems():
 			res = job.result()
 			if res:
+				out = job.get_input()
 				resultmap[key] = res
 		return resultmap
 
