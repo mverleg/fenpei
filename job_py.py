@@ -12,7 +12,7 @@
 from os.path import join, exists, split
 from bardeen.system import mkdirp, link_else_copy
 from fenpei.job import Job
-from settings import CALC_DIR
+from .conf import CALC_DIR
 
 
 class PyJob(Job):
@@ -42,8 +42,8 @@ class PyJob(Job):
 		"""
 		self.status = self.PREPARED
 		if not self.is_prepared():
-			if self.batch_name:
-				mkdirp(join(CALC_DIR, self.batch_name))
+			# if self.batch_name:
+			# 	mkdirp(join(CALC_DIR, self.batch_name))
 			mkdirp(self.directory)
 		# todo: change this to a pure copy, and allow for processing of the file with .format() and a provided dict
 		link_else_copy(self.run_template(), self.run_file())

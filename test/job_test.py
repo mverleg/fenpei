@@ -4,10 +4,10 @@
 	needs test/test_run.sh
 """
 
+from os import getcwd
 from os.path import join, exists
 from re import findall
 from fenpei.job_sh_single import ShJobSingle
-from settings import BASE_DIR
 
 
 class TestJob(ShJobSingle):
@@ -17,7 +17,7 @@ class TestJob(ShJobSingle):
 		"""
 			:return: list of files with substitutions
 		"""
-		return [(BASE_DIR, 'test_run.sh')]
+		return [(getcwd(), 'test_run.sh')]
 
 	@classmethod
 	def run_file(cls):
@@ -63,4 +63,5 @@ class TestJob(ShJobSingle):
 			ax.scatter(x, y)
 		else:
 			print 'no results yet'
+
 

@@ -21,7 +21,7 @@ from time import time
 from os import remove
 from os.path import join, isdir
 from shutil import rmtree
-from settings import CALC_DIR
+from .conf import CALC_DIR
 
 
 class Job(object):
