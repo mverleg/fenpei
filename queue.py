@@ -554,12 +554,12 @@ class Queue(object):
 		"""
 		assert len(parameters) > 0, 'Provide a job attribute to compare jobs.'
 		if len(parameters) == 1:
-			jobmap = {}
+			jobmap = OrderedDict()
 			for job in self.jobs:
 				assert hasattr(job, parameters[0]), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(parameters[0], job)
 				assert getattr(job, parameters[0]) not in jobmap, 'Can not compare jobs on "{0:s}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters[0], jobmap[getattr(job, parameters[0])], job, getattr(job, parameters[0]))
 				jobmap[getattr(job, parameters[0])] = job
-			return OrderedDict((key, jobmap[key]) for key in sorted(jobmap.keys()))
+			return jobmap # OrderedDict((key, jobmap[key]) for key in sorted(jobmap.keys()))
 		else:
 			raise NotImplementedError('Useful, but not yet needed.')
 
