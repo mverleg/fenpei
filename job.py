@@ -130,7 +130,6 @@ class Job(object):
 			return self.pid in [proc['pid'] for proc in proc_list if proc is not None]
 		except KeyError:
 			raise Exception('node %s for job %s no longer found?' % (self.node, self))
-		return True
 
 	def is_complete(self):
 		"""
@@ -159,6 +158,9 @@ class Job(object):
 			return self.NONE
 		self.status = check_status_indicators(self)
 		return self.status
+
+	def status_str(self):
+		return self.status_names[self.find_status()]
 
 	def prepare(self, *args, **kwargs):
 		"""

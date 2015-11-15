@@ -304,10 +304,13 @@ class Queue(object):
 	def get_jobs(self):
 		return self.jobs
 
-	def list_jobs(self):
-		N = int(ceil(len(self.jobs) / 3.))
+	def list_jobs(self, cols=2, *args, **kwargs):
+		N = int(ceil(len(self.jobs) / float(cols)))
 		for k in range(N):
-			print '   '.join('%3d. %-25s' % (p + 1, '%s [%d]' % (self.jobs[p].name, self.jobs[p].weight)) for p in [k, k+N, k+2*N] if p < len(self.jobs))
+			print '  | '.join(
+				'{0:2d}. {1:20s} {2:>10s}'.format(p + 1, '{0:s} [{1:d}]'.format(self.jobs[p].name, self.jobs[p].weight), self.jobs[p].status_str())
+				for p in [k, k+N, k+2*N] if p < len(self.jobs)
+			)
 
 	def run_job(self, job, filepath):
 		"""
@@ -367,7 +370,7 @@ class Queue(object):
 		"""
 		return sum(job.weight for job in self.get_status()[1][Job.RUNNING])
 
-	def start(self):
+	def start(self, *args, **kwargs):
 		"""
 			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
@@ -478,17 +481,18 @@ class Queue(object):
 			status_list[job.status].append(job)
 		return status_count, status_list
 
-	def show_status(self, status_count, status_list):
+	def show_status(self, status_count, status_list, verbosity=0):
 		"""
 			Show list of statusses.
 		"""
-
 		self._log('status for %d jobs:' % len(self.jobs), level = 1)
 		for status_nr in status_list.keys():
 			job_names = ', '.join(str(job) for job in status_list[status_nr])
-			self._log(' %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...'))
+			if verbosity <= 0:
+				job_names = job_names if len(job_names) <= 40 else job_names[:37] + '...'
+			self._log(' %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names))
 
-	def continuous_status(self, delay = 5):
+	def continuous_status(self, delay = 5, *args, **kwargs):
 		"""
 			Keep refreshing status until ctrl+C.
 		"""
@@ -517,12 +521,12 @@ class Queue(object):
 				self._log('status monitoring terminated by user')
 				break
 
-	def status(self):
+	def status(self, verbosity=0, *args, **kwargs):
 		"""
 			Get and show the status of jobs.
 		"""
 		status_count, status_list = self.get_status()
-		self.show_status(status_count, status_list)
+		self.show_status(status_count, status_list, verbosity=verbosity)
 
 	def result(self, *args, **kwargs):
 		"""
@@ -580,7 +584,7 @@ class Queue(object):
 		"""
 			Analyze sys.argv and run commands based on it.
 		"""
-		def summary(queue = self): self.summary(queue)
+		def summary(queue = self, *args, **kwargs): self.summary(queue)
 		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
 		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of warning')
@@ -638,7 +642,7 @@ class Queue(object):
 
 		if actions:
 			for action in args.actions:
-				action()
+				action(verbosity=args.verbosity)
 
 		return [str(action.__name__) for action in actions]
 
