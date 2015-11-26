@@ -487,7 +487,7 @@ class Queue(object):
 		"""
 		self._log('status for %d jobs:' % len(self.jobs), level = 1)
 		for status_nr in status_list.keys():
-			job_names = ', '.join(str(job) for job in status_list[status_nr])
+			job_names = ' '.join(str(job) for job in status_list[status_nr])
 			if verbosity <= 0:
 				job_names = job_names if len(job_names) <= 40 else job_names[:37] + '...'
 			self._log(' %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names))
@@ -532,7 +532,7 @@ class Queue(object):
 		"""
 			:return: a dict of job results, with names as keys
 		"""
-		results = {}
+		results = OrderedDict()
 		for job in self.jobs:
 			results[job] = job.result(*args, **kwargs)
 		self._log('retrieved results for %d jobs' % len(self.jobs))
