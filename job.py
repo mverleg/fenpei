@@ -58,7 +58,9 @@ class Job(object):
 		self.status = self.NONE
 
 	def __repr__(self):
-		return self.name
+		if hasattr(self, 'name'):
+			return self.name
+		return '{0:s} id{1:}'.format(self.__class__.__name__, id(self))
 
 	def _log(self, txt, *args, **kwargs):
 		"""
