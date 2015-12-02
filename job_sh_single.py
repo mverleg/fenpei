@@ -6,6 +6,8 @@
 """
 
 from copy import copy
+from logging import warning
+
 from fenpei.job_sh import ShJob
 
 
@@ -24,6 +26,9 @@ class ShJobSingle(ShJob):
 		"""
 		""" Defaults for substitutions. """
 		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
+		for sub in subs.keys():
+			if sub not in subs_with_defaults:
+				warning('job "{0:}" has unknown substitution parameter "{1:s}" = "{2:}"'.format(self, sub, subs[sub]))
 		subs_with_defaults.update(subs)
 		subs_with_defaults['defaults_version'] = defaults_version
 		""" Check/make sure that combiantions of parameters are acceptable """
