@@ -12,7 +12,7 @@
 
 from socket import gethostname
 from collections import Mapping
-from os import listdir
+from os import listdir, symlink
 from os.path import join, basename, isdir, isfile, dirname, exists
 from shutil import copyfile
 from bardeen.system import mkdirp, link_else_copy
@@ -25,7 +25,7 @@ from shell import git_current_hash
 
 class ShJob(Job):
 
-	def __init__(self, name, substitutions, weight = 1, batch_name = None, new_format = False):
+	def __init__(self, name, substitutions, weight = 1, batch_name = None, new_format = False, use_symlink=True):
 		"""
 			Create a executable or shell job object, provided a number of files or directories which will be copied,
 			and (optionally) substitutions for each of them.
@@ -55,10 +55,11 @@ class ShJob(Job):
 			elif subst is None:
 				pass
 			else:
-				raise NotImplementedError('I\'ve not thought about this, maybe it\'s not needed anyway.')
+				raise NotImplementedError('I haven\'t thought about this, maybe it\'s not needed anyway.')
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
 		self.new_format = new_format
+		self.use_symlink = use_symlink
 		self._fix_files()
 
 	@classmethod
@@ -169,7 +170,7 @@ class ShJob(Job):
 									self.cleanup()
 									return False
 				else:
-					copyfile(filepath, join(self.directory, filename))
+					link_else_copy(filepath, join(self.directory, filename))
 			else:
 				""" hard-link files (directories recursively) if possible """
 				link_else_copy(filepath, join(self.directory, filename))

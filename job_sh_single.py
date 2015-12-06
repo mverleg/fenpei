@@ -14,7 +14,7 @@ from fenpei.job_sh import ShJob
 class ShJobSingle(ShJob):
 
 	def __init__(self, name, subs, sub_files = [], nosub_files = [], weight = 1, batch_name = None,
-			defaults_version = 1, new_format = False, skip_checks=False):
+			defaults_version = 1, new_format = False, skip_checks=False, use_symlink=True):
 		"""
 			Similar to ShJob.
 
@@ -41,7 +41,7 @@ class ShJobSingle(ShJob):
 		substitutions = {filepath: checked_subs for filepath in self.get_sub_files() + sub_files}
 		substitutions.update({filepath: None for filepath in self.get_nosub_files() + nosub_files})
 		super(ShJobSingle, self).__init__(name = name, substitutions = substitutions, weight = weight,
-			batch_name = batch_name, new_format = new_format)
+			batch_name = batch_name, new_format = new_format, use_symlink=use_symlink)
 
 	def check_and_update_subs(self, subs, *args, **kwargs):
 		return subs
