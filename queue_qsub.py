@@ -84,6 +84,7 @@ class QsubQueue(Queue):
 		"""
 		self._test_qstat()
 		self._log('loading processes for %s' % node, level = 3)
+		#todo: would this be appreciably faster with caching?
 		return self._get_qstat()
 
 	def stop_job(self, node, pid):

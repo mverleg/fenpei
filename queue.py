@@ -23,10 +23,26 @@ from numpy import ceil
 from bardeen.system import mkdirp
 from shell import run_cmds_on
 from fenpei.job import Job
+from .conf import get_pool_light
+from functools import partial
 
 
 TMP_DIR = join(gettempdir(), 'fenpei')
 mkdirp(TMP_DIR)
+
+
+def job_task_run(job, method, **kwargs):
+	"""
+		Runs an arbitrary method of job; used by job_task.
+	"""
+	return getattr(job, method)(**kwargs)
+
+
+def job_task(method, **kwargs):
+	"""
+		Returns a function that runs an arbitrary method of an object, for passing to Pool.map
+	"""
+	return partial(job_task_run, method=method, **kwargs)
 
 
 class Queue(object):
@@ -441,13 +457,18 @@ class Queue(object):
 		self._log('starting: ' + ', '.join(job.name for job in jobs), level = 2)
 		return jobs
 
-	def fix(self, *args, **kwargs):
+	def fix(self, parallel=True, *args, **kwargs):
 		"""
 			Fix jobs, e.g. after fixes and updates.
 		"""
 		fix_count = 0
-		for job in self.jobs:
-			fix_count += int(job.fix(*args, **kwargs))
+		if parallel:
+			assert not args, 'positional arguments can\t be used in parallel mode, sorry (got {0:})'.format(args)
+			statuses = get_pool_light().map(job_task('fix', **kwargs), self.jobs)
+			fix_count = sum(int(status) for status in statuses)
+		else:
+			for job in self.jobs:
+				fix_count += int(job.fix(*args, **kwargs))
 		self._log('fixed %d jobs' % fix_count)
 
 	def kill(self, *args, **kwargs):
@@ -469,16 +490,25 @@ class Queue(object):
 				clean_count += 1
 		self._log('cleaned up %d jobs' % clean_count)
 
-	def get_status(self):
+	def get_status(self, parallel=False, **kwargs):
 		"""
 			Get list of statusses.
 		"""
+		# if not self.force:
+		# 	""" Parallel mode is slower in this case so only use it when forced """
+		# 	self._log('using parallel mode for status because force mode is used', level=2)
+		# 	parallel = False
+		if parallel:
+			statuses = get_pool_light().map(partial(job_task('find_status'), **kwargs), self.jobs)
+		else:
+			statuses = {}
+			for job in self.jobs:
+				statuses[job] = job.find_status(**kwargs)
 		status_count = defaultdict(int)
 		status_list = defaultdict(list)
-		for job in self.jobs:
-			job.find_status()
-			status_count[job.status] += 1
-			status_list[job.status].append(job)
+		for job, status in statuses.items():
+			status_count[status] += 1
+			status_list[status].append(job)
 		return status_count, status_list
 
 	def show_status(self, status_count, status_list, verbosity=0):
@@ -528,13 +558,18 @@ class Queue(object):
 		status_count, status_list = self.get_status()
 		self.show_status(status_count, status_list, verbosity=verbosity)
 
-	def result(self, *args, **kwargs):
+	def result(self, parallel=True, *args, **kwargs):
 		"""
 			:return: a dict of job results, with names as keys
 		"""
 		results = OrderedDict()
-		for job in self.jobs:
-			results[job] = job.result(*args, **kwargs)
+		if parallel:
+			resli = get_pool_light().map(partial(job_task('result'), **kwargs), self.jobs)
+			for job, res in zip(self.jobs, resli):
+				results[job] = res
+		else:
+			for job in self.jobs:
+				results[job] = job.result(*args, **kwargs)
 		self._log('retrieved results for %d jobs' % len(self.jobs))
 		return results
 
@@ -557,15 +592,20 @@ class Queue(object):
 			:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are parameter values for a single parameter, otherwise tuples.
 		"""
 		assert len(parameters) > 0, 'Provide a job attribute to compare jobs.'
-		if len(parameters) == 1:
-			jobmap = OrderedDict()
-			for job in self.jobs:
-				assert hasattr(job, parameters[0]), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(parameters[0], job)
-				assert getattr(job, parameters[0]) not in jobmap, 'Can not compare jobs on "{0:s}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters[0], jobmap[getattr(job, parameters[0])], job, getattr(job, parameters[0]))
-				jobmap[getattr(job, parameters[0])] = job
-			return jobmap # OrderedDict((key, jobmap[key]) for key in sorted(jobmap.keys()))
-		else:
-			raise NotImplementedError('Useful, but not yet needed.')
+		def get_key(j):
+			vals = []
+			for param in parameters:
+				assert hasattr(job, param), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(param, job)
+				vals.append(getattr(job, param))
+			if len(vals) == 1:
+				return vals[0]
+			return tuple(vals)
+		jobmap = OrderedDict()
+		for job in self.jobs:
+			key = get_key(job)
+			assert key not in jobmap, 'Can not compare jobs on "{0:}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters, jobmap[key], job, key)
+			jobmap[key] = job
+		return jobmap
 
 	def compare_results(self, *parameters):
 		"""
@@ -587,7 +627,7 @@ class Queue(object):
 		def summary(queue = self, *args, **kwargs): self.summary(queue)
 		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
-		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of warning')
+		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of failing with a warning')
 		parser.add_argument('-e', '--restart', dest = 'restart', action = 'store_true', help = 'toggle restarting failed jobs')
 		parser.add_argument('-a', '--availability', dest = 'availability', action = 'store_true', help = 'list all available nodes and their load (cache reload)')
 		parser.add_argument('-d', '--distribute', dest = 'distribute', action = 'store_true', help = 'distribute the jobs over available nodes')
@@ -604,6 +644,8 @@ class Queue(object):
 		parser.add_argument('-s', '--status', dest = 'actions', action = 'append_const', const = self.status, help = 'show job status')
 		parser.add_argument('-m', '--monitor', dest = 'actions', action = 'append_const', const = self.continuous_status, help = 'show job status every few seconds')
 		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = summary, help = 'run analysis code to summarize results')
+		parser.add_argument('-j', '--serial', dest = 'parallel', action = 'store_false', help = 'job commands (start, fix, etc) may NOT be run in parallel (parallel is faster but order of jobs and output is inconsistent)')
+		# remaining letters: bjntu  [-i, -y and -o are available but have commmon meanings]
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
 
@@ -642,7 +684,7 @@ class Queue(object):
 
 		if actions:
 			for action in args.actions:
-				action(verbosity=args.verbosity)
+				action(verbosity=args.verbosity, parallel=args.parallel)
 
 		return [str(action.__name__) for action in actions]
 

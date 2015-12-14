@@ -244,7 +244,8 @@ class Job(object):
 			if not self.queue is None:
 				if not self.queue.force:
 					self._log('you are trying to clean up a job that is running or completed; ' + \
-						'if you are sure you want to do this, use -f')
+						'if you are sure you want to do this, use -f (it could also mean that two jobs' + \
+					    'are use the same name and batchname).')
 					exit()
 		if isdir(self.directory):
 			rmtree(self.directory, ignore_errors = True)
