@@ -9,7 +9,7 @@
 	- restart failed
 
 """
-
+from pickle import dumps, loads
 from tempfile import gettempdir
 from time import time, sleep
 from random import sample
@@ -499,7 +499,7 @@ class Queue(object):
 		# 	self._log('using parallel mode for status because force mode is used', level=2)
 		# 	parallel = False
 		if parallel:
-			statuses = get_pool_light().map(partial(job_task('find_status'), **kwargs), self.jobs)
+			statuses = get_pool_light().map(job_task('find_status', **kwargs), self.jobs)
 		else:
 			statuses = {}
 			for job in self.jobs:
@@ -564,7 +564,7 @@ class Queue(object):
 		"""
 		results = OrderedDict()
 		if parallel:
-			resli = get_pool_light().map(partial(job_task('result'), **kwargs), self.jobs)
+			resli = get_pool_light().map(job_task('result', **kwargs), self.jobs)
 			for job, res in zip(self.jobs, resli):
 				results[job] = res
 		else:
