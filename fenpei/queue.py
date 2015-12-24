@@ -9,7 +9,10 @@
 	- restart failed
 
 """
+from logging import warning
 from pickle import dumps, loads
+from subprocess import PIPE
+from subprocess import Popen
 from tempfile import gettempdir
 from time import time, sleep
 from random import sample
@@ -390,6 +393,7 @@ class Queue(object):
 		"""
 			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
+		self._quota_warning()
 		W = None
 		if self.all:
 			if self.weight:
@@ -425,6 +429,19 @@ class Queue(object):
 			self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
 		else:
 			self._log('no jobs to restart' if self.restart else 'no jobs to start')
+
+	def _quota_warning(self, *args, **kwargs):
+		try:
+			out, err = Popen(['quota', '-Q'], stdout=PIPE, stderr=PIPE).communicate()
+		except OSError:
+			""" No quota """
+		else:
+			parts = out.splitlines()[-1].split()
+			used, avail = float(parts[0]), float(parts[1])
+			print(avail - used, used / avail)
+			if avail - used < 1e7 and used / avail > 0.8:
+				warning('there is only {0:d}MB free ({1:d}%)'.format(
+					int((avail - used) / 1024), int(100 * (1 - float(used) / avail))))
 
 	def get_jobs_by_weight(self, max_weight):
 		"""
