@@ -7,7 +7,6 @@
 
 from copy import copy
 from logging import warning
-
 from fenpei.job_sh import ShJob
 
 

@@ -170,10 +170,16 @@ class ShJob(Job):
 									self.cleanup()
 									return False
 				else:
-					link_else_copy(filepath, join(self.directory, filename))
+					if self.use_symlink:
+						symlink(filepath, join(self.directory, filename))
+					else:
+						copyfile(filepath, join(self.directory, filename))
 			else:
 				""" hard-link files (directories recursively) if possible """
-				link_else_copy(filepath, join(self.directory, filename))
+				if self.use_symlink:
+					symlink(filepath, join(self.directory, filename))
+				else:
+					copyfile(filepath, join(self.directory, filename))
 		if isfile(join(self.directory, self.run_file())):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:

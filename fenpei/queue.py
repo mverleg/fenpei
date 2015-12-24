@@ -602,12 +602,15 @@ class Queue(object):
 		#	cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
 		#show()
 
-	def compare_jobs(self, *parameters):
+	def compare_jobs(self, parameters, filter=None):
 		"""
 			Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
 
+			:param filter: a function that returns True for jobs that should be included.
 			:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are parameter values for a single parameter, otherwise tuples.
 		"""
+		if not hasattr(parameters, '__iter__'):
+			parameters = (parameters,)
 		assert len(parameters) > 0, 'Provide a job attribute to compare jobs.'
 		def get_key(j):
 			vals = []
@@ -618,18 +621,21 @@ class Queue(object):
 				return vals[0]
 			return tuple(vals)
 		jobmap = OrderedDict()
+		if filter is None:
+			filter = lambda obj: True
 		for job in self.jobs:
-			key = get_key(job)
-			assert key not in jobmap, 'Can not compare jobs on "{0:}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters, jobmap[key], job, key)
-			jobmap[key] = job
+			if filter(job):
+				key = get_key(job)
+				assert key not in jobmap, 'Can not compare jobs on "{0:}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters, jobmap[key], job, key)
+				jobmap[key] = job
 		return jobmap
 
-	def compare_results(self, *parameters):
+	def compare_results(self, parameters, filter=None):
 		"""
 			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
 		resultmap = OrderedDict()
-		for key, job in self.compare_jobs(*parameters).items():
+		for key, job in self.compare_jobs(parameters, filter=filter).items():
 			res = job.result()
 			if res:
 				out = OrderedDict((('in', job.get_input()),))
