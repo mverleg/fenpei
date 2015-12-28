@@ -15,9 +15,9 @@ class QsubQueue(Queue):
 
 	DEFAULT_QSUB_NAME = 'queuename'
 
-	def __init__(self, jobs = None, qname = None):
+	def __init__(self, jobs=None, qname=None, summary_func=None):
 		self.qname = qname or self.DEFAULT_QSUB_NAME
-		super(QsubQueue, self).__init__(jobs = jobs)
+		super(QsubQueue, self).__init__(jobs=jobs, summary_func=summary_func)
 
 	def all_nodes(self):
 		"""
@@ -106,7 +106,7 @@ class QsubQueue(Queue):
 				'-q', self.qname,               # which que to wait in
 				'-N', job.name,                 # name of the job
 				#'-l slots={0:d}'.format(job.weight), # number of slots = weight of job
-					#todo: check this; maybe it's threads rather than processes
+					#check this; maybe it's threads rather than processes
 				'-e', join(job.directory, 'qsub.err'),  # error directory for the que
 				'-o', join(job.directory, 'qsub.out'),  # output directory for the que
 			'bash -c \'%s\'' % cmd,		    # the actual command (single quotes!)

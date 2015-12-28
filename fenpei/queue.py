@@ -50,7 +50,7 @@ def job_task(method, **kwargs):
 
 class Queue(object):
 
-	def __init__(self, jobs = None):
+	def __init__(self, jobs=None, summary_func=None):
 		self.show = 1
 		self.force = False
 		self.restart = False
@@ -63,8 +63,11 @@ class Queue(object):
 		self.distribution = {}
 		self.process_list = {}
 		self.process_time = {}
+		self.parallel = None
 		if jobs:
 			self.add_jobs(jobs)
+		if summary_func is not None:
+			self.summary = summary_func
 
 	def _log(self, txt, level = 1):
 		"""
@@ -474,11 +477,12 @@ class Queue(object):
 		self._log('starting: ' + ', '.join(job.name for job in jobs), level = 2)
 		return jobs
 
-	def fix(self, parallel=True, *args, **kwargs):
+	def fix(self, parallel=None, *args, **kwargs):
 		"""
 			Fix jobs, e.g. after fixes and updates.
 		"""
 		fix_count = 0
+		parallel = self.parallel if parallel is None else parallel
 		if parallel:
 			assert not args, 'positional arguments can\t be used in parallel mode, sorry (got {0:})'.format(args)
 			statuses = get_pool_light().map(job_task('fix', **kwargs), self.jobs)
@@ -507,7 +511,7 @@ class Queue(object):
 				clean_count += 1
 		self._log('cleaned up %d jobs' % clean_count)
 
-	def get_status(self, parallel=False, **kwargs):
+	def get_status(self, parallel=None, **kwargs):
 		"""
 			Get list of statusses.
 		"""
@@ -515,6 +519,7 @@ class Queue(object):
 		# 	""" Parallel mode is slower in this case so only use it when forced """
 		# 	self._log('using parallel mode for status because force mode is used', level=2)
 		# 	parallel = False
+		parallel = self.parallel if parallel is None else parallel
 		if parallel:
 			statuses = get_pool_light().map(job_task('find_status', **kwargs), self.jobs)
 		else:
@@ -539,7 +544,7 @@ class Queue(object):
 				job_names = job_names if len(job_names) <= 40 else job_names[:37] + '...'
 			self._log(' %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names))
 
-	def continuous_status(self, delay = 5, *args, **kwargs):
+	def continuous_status(self, delay=5, *args, **kwargs):
 		"""
 			Keep refreshing status until ctrl+C.
 		"""
@@ -575,12 +580,13 @@ class Queue(object):
 		status_count, status_list = self.get_status()
 		self.show_status(status_count, status_list, verbosity=verbosity)
 
-	def result(self, parallel=True, jobs=None, *args, **kwargs):
+	def result(self, parallel=None, jobs=None, *args, **kwargs):
 		"""
 			:return: a dict of job results, with names as keys
 
 			(Not used for compare_jobs, so parallelism has little effect.)
 		"""
+		parallel = self.parallel if parallel is None else parallel
 		if jobs is None:
 			jobs = self.jobs
 		results = OrderedDict()
@@ -592,7 +598,7 @@ class Queue(object):
 			for job in jobs:
 				results[job] = job.result(*args, **kwargs)
 		for job, res in results.items():
-			if 'in' not in res:
+			if res and 'in' not in res:
 				res['in'] = job.get_input()
 		self._log('retrieved results for %d jobs' % len(jobs))
 		return results
@@ -600,14 +606,6 @@ class Queue(object):
 	@staticmethod
 	def summary(queue):
 		print 'No summary function (queue "{0:s}"). Attach a static method .summary(queue) to the queue.'.format(queue.name)
-		#"""
-		#	Summarize the results of all jobs, grouped by type.
-		#"""
-		#for cls, jobs in group_by(self.jobs, lambda job: job.group_cls or job.__class__).items():
-		#	self._log('summary for %s' % cls.__name__)
-		#	results = [job.result() for job in jobs]
-		#	cls.summary(results = [result for result in results if result is not None], jobs = jobs, *args, **kwargs)
-		#show()
 
 	def compare_jobs(self, parameters, filter=None):
 		"""
@@ -641,13 +639,9 @@ class Queue(object):
 		"""
 			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
-		resultmap = OrderedDict()
 		jobmap = self.compare_jobs(parameters, filter=filter)
 		results = self.result(jobs=jobmap.values())
-		for (key, job), res in zip(jobmap.items(), results):
-			if res:
-				resultmap[key] = res
-		return resultmap
+		return {key: val for key, val in results.items() if val is not None}
 
 	def run_argv(self):
 		"""
@@ -711,6 +705,7 @@ class Queue(object):
 				self._log('you specified a weight for jobs to keep running, but didn\'t specify a start command [-c]')
 				return
 
+		self.parallel = args.parallel
 		if actions:
 			for action in args.actions:
 				action(verbosity=args.verbosity, parallel=args.parallel)

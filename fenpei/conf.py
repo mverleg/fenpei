@@ -15,7 +15,7 @@ def get_pool_light():
 		Process pool for light work, like IO. (This object cannot be serialized so can't be part of Queue).
 	"""
 	if not hasattr(get_pool_light, 'pool'):
-		setattr(get_pool_light, 'pool', Pool(4 * cpu_count()))
+		setattr(get_pool_light, 'pool', Pool(min(3 * cpu_count(), 20)))
 	return getattr(get_pool_light, 'pool')
 
 
