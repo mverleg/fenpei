@@ -515,13 +515,10 @@ class Queue(object):
 		"""
 			Get list of statusses.
 		"""
-		# if not self.force:
-		# 	""" Parallel mode is slower in this case so only use it when forced """
-		# 	self._log('using parallel mode for status because force mode is used', level=2)
-		# 	parallel = False
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
-			statuses = get_pool_light().map(job_task('find_status', **kwargs), self.jobs)
+			status_res = get_pool_light().map(job_task('find_status', **kwargs), self.jobs)
+			statuses = dict(zip(self.jobs, status_res))
 		else:
 			statuses = {}
 			for job in self.jobs:
