@@ -575,19 +575,26 @@ class Queue(object):
 		status_count, status_list = self.get_status()
 		self.show_status(status_count, status_list, verbosity=verbosity)
 
-	def result(self, parallel=True, *args, **kwargs):
+	def result(self, parallel=True, jobs=None, *args, **kwargs):
 		"""
 			:return: a dict of job results, with names as keys
+
+			(Not used for compare_jobs, so parallelism has little effect.)
 		"""
+		if jobs is None:
+			jobs = self.jobs
 		results = OrderedDict()
 		if parallel:
-			resli = get_pool_light().map(job_task('result', **kwargs), self.jobs)
-			for job, res in zip(self.jobs, resli):
+			resli = get_pool_light().map(job_task('result', **kwargs), jobs)
+			for job, res in zip(jobs, resli):
 				results[job] = res
 		else:
-			for job in self.jobs:
+			for job in jobs:
 				results[job] = job.result(*args, **kwargs)
-		self._log('retrieved results for %d jobs' % len(self.jobs))
+		for job, res in results.items():
+			if 'in' not in res:
+				res['in'] = job.get_input()
+		self._log('retrieved results for %d jobs' % len(jobs))
 		return results
 
 	@staticmethod
@@ -635,12 +642,11 @@ class Queue(object):
 			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
 		resultmap = OrderedDict()
-		for key, job in self.compare_jobs(parameters, filter=filter).items():
-			res = job.result()
+		jobmap = self.compare_jobs(parameters, filter=filter)
+		results = self.result(jobs=jobmap.values())
+		for (key, job), res in zip(jobmap.items(), results):
 			if res:
-				out = OrderedDict((('in', job.get_input()),))
-				out.update(res)
-				resultmap[key] = out
+				resultmap[key] = res
 		return resultmap
 
 	def run_argv(self):

@@ -44,7 +44,7 @@ class Job(object):
 			:param weight: the relative resource use of this job (higher relative weights means fewer jobs will be scheduled together)
 			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
 		"""
-		assert match(r'^\w[/\w\._-]*$', name), 'This is not a valid name'
+		assert match(r'^\w[/\w\.\+_-]*$', name), 'This is not a valid name: "{0:}"'.format(name)
 		assert weight > 0
 		self.name = name
 		self.weight = weight
