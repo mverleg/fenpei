@@ -636,9 +636,12 @@ class Queue(object):
 		"""
 			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
+		""" param -> job """
 		jobmap = self.compare_jobs(parameters, filter=filter)
+		""" job -> result """
 		results = self.result(jobs=jobmap.values())
-		return {key: val for key, val in results.items() if val is not None}
+		""" param -> result [if complete] """
+		return {parval: results[job] for parval, job in jobmap.items() if results[job] is not None}
 
 	def run_argv(self):
 		"""
