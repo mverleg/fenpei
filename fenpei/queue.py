@@ -667,7 +667,6 @@ class Queue(object):
 			for k, line in enumerate(txt):
 				stdout.write('{0:20s} {1:}\n'.format(str(job) if k==0 else '', line))
 
-
 	def run_argv(self):
 		"""
 			Analyze sys.argv and run commands based on it.
