@@ -13,6 +13,7 @@ from logging import warning
 from pickle import dumps, loads
 from subprocess import PIPE
 from subprocess import Popen
+from sys import stdout
 from tempfile import gettempdir
 from time import time, sleep
 from random import sample
@@ -643,6 +644,30 @@ class Queue(object):
 		""" param -> result [if complete] """
 		return {parval: results[job] for parval, job in jobmap.items() if results[job] is not None}
 
+	def get_crash_reason(self, parallel=None, verbosity=0):
+		"""
+			For each failed job, print why it failed.
+		"""
+		parallel = self.parallel if parallel is None else parallel
+		reasons = OrderedDict()
+		if parallel:
+			resli = get_pool_light().map(job_task('_crash_reason_if_crashed', verbosity=verbosity), self.jobs)
+		else:
+			resli = [job._crash_reason_if_crashed(verbosity=verbosity) for job in self.jobs]
+		for job, res in zip(self.jobs, resli):
+			if res is not None:
+				reasons[job] = res
+		self._log('retrieved crash reasons for %d jobs' % len(reasons))
+		return reasons
+
+	def crash_reason(self, parallel=None, verbosity=0, line_len=80, *args, **kwargs):
+		reasons = self.get_crash_reason(parallel=parallel, verbosity=verbosity)
+		for job, reason in reasons.items():
+			txt = [reason[k:k+line_len] for k in range(0, len(reason), line_len)]
+			for k, line in enumerate(txt):
+				stdout.write('{0:20s} {1:}\n'.format(str(job) if k==0 else '', line))
+
+
 	def run_argv(self):
 		"""
 			Analyze sys.argv and run commands based on it.
@@ -667,8 +692,9 @@ class Queue(object):
 		parser.add_argument('-s', '--status', dest = 'actions', action = 'append_const', const = self.status, help = 'show job status')
 		parser.add_argument('-m', '--monitor', dest = 'actions', action = 'append_const', const = self.continuous_status, help = 'show job status every few seconds')
 		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = summary, help = 'run analysis code to summarize results')
+		parser.add_argument('-t', '--whyfail', dest = 'actions', action = 'append_const', const = self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
 		parser.add_argument('-j', '--serial', dest = 'parallel', action = 'store_false', help = 'job commands (start, fix, etc) may NOT be run in parallel (parallel is faster but order of jobs and output is inconsistent)')
-		# remaining letters: bjntu  [-i, -y and -o are available but have commmon meanings]
+		# remaining letters: bjnu  [-i, -y and -o are available but have commmon meanings]
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
 

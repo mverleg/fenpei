@@ -262,6 +262,20 @@ class Job(object):
 			return None
 		return None
 
+	def crash_reason(self, verbosity=0, *args, **kwargs):
+		"""
+			Find the reason the job has crashed. Should only be called for crashed jobs (by _crash_reason_if_crashed).
+		"""
+		if verbosity <= 0:
+			return '??'
+		else:
+			return '?? reason for crash not known'
+
+	def _crash_reason_if_crashed(self, verbosity=0, *args, **kwargs):
+		if not self.find_status() == self.CRASHED:
+			return None
+		return self.crash_reason(verbosity=verbosity, *args, **kwargs)
+
 	#@classmethod
 	#def summary(cls, results, jobs, *args, **kwargs):
 	#	"""
