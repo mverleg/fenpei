@@ -164,7 +164,7 @@ class Job(object):
 	def status_str(self):
 		return self.status_names[self.find_status()]
 
-	def prepare(self, *args, **kwargs):
+	def prepare(self, silent=False, *args, **kwargs):
 		"""
 			Prepares the job for execution.
 
@@ -175,6 +175,8 @@ class Job(object):
 			if self.batch_name:
 				mkdirp(join(CALC_DIR, self.batch_name))
 			mkdirp(self.directory)
+		if not silent:
+			self._log('preparing {0:s}'.format(self), level=2)
 		""" child method add more steps here """
 
 	def _start_pre(self, *args, **kwargs):
@@ -191,7 +193,7 @@ class Job(object):
 						'use restart (-e) to skip such jobs or -f to overrule this warning')
 					exit()
 		if not self.is_prepared():
-			self.prepare()
+			self.prepare(silent=True)
 
 	def _start_post(self, node, pid, *args, **kwargs):
 		"""
@@ -212,7 +214,7 @@ class Job(object):
 		"""
 			your starting code here
 		"""
-		self._start_post(node, pid, *args, **kwargs)
+		self._start_post(node, 'pid_here', *args, **kwargs)
 		return True
 
 	def fix(self, *args, **kwargs):
@@ -249,6 +251,7 @@ class Job(object):
 					exit()
 		if isdir(self.directory):
 			rmtree(self.directory, ignore_errors = True)
+			self._log('cleaned up {0:s}'.format(self), level=2)
 			return True
 		return False
 

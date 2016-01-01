@@ -5,6 +5,7 @@
 
 from os import popen
 from os.path import join
+from repoze.lru import lru_cache
 from fenpei.shell import run_cmds
 from fenpei.queue import Queue
 from re import findall
@@ -40,6 +41,7 @@ class QsubQueue(Queue):
 		self.all_nodes()
 		self.distribution = {0: jobs}
 
+	@lru_cache(10)
 	def _test_qstat(self):
 		if run_cmds(['qstat'], queue = self) is None:
 			self._log('qstat does not work on this machine; run this code from a node that has access to the queue')
@@ -78,9 +80,10 @@ class QsubQueue(Queue):
 			})
 		return jobs
 
+	@lru_cache(maxsize=100, timeout=2.5)
 	def processes(self, node):
 		"""
-			Get process info from qstat (no need for caching).
+			Get process info from qstat.
 		"""
 		self._test_qstat()
 		self._log('loading processes for %s' % node, level = 3)

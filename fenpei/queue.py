@@ -10,11 +10,9 @@
 
 """
 from logging import warning
-from pickle import dumps, loads
 from subprocess import PIPE
 from subprocess import Popen
 from sys import stdout
-from tempfile import gettempdir
 from time import time, sleep
 from random import sample
 from bardeen.inout import reprint
@@ -22,17 +20,13 @@ from datetime import datetime
 from collections import defaultdict, OrderedDict
 from argparse import ArgumentParser
 from os import remove
-from os.path import basename, join
+from os.path import basename
 from numpy import ceil
-from bardeen.system import mkdirp
 from shell import run_cmds_on
 from fenpei.job import Job
-from .conf import get_pool_light
+from .conf import get_pool_light, TMP_DIR, thread_map
 from functools import partial
 
-
-TMP_DIR = join(gettempdir(), 'fenpei')
-mkdirp(TMP_DIR)
 
 
 def job_task_run(job, method, **kwargs):
@@ -372,13 +366,17 @@ class Queue(object):
 		"""
 		run_cmds_on(['kill %s' % pid], node = node, queue = self)
 
-	def prepare(self, *args, **kwargs):
+	def prepare(self, parallel=None, *args, **kwargs):
 		"""
 			Prepare all the currently added jobs (make files etc).
 		"""
-		prepare_count = 0
-		for job in self.jobs:
-			prepare_count += int(job.prepare(*args, **kwargs))
+		parallel = self.parallel if parallel is None else parallel
+		if parallel:
+			#statuses = get_pool_light().map(job_task('prepare', **kwargs), self.jobs)
+			statuses = thread_map(job_task('prepare', **kwargs), self.jobs)
+		else:
+			statuses = (job.prepare(**kwargs) for job in self.jobs)
+		prepare_count = sum(int(status) for status in statuses)
 		self._log('prepared %d jobs' % prepare_count)
 
 	def running_count(self):
@@ -393,7 +391,7 @@ class Queue(object):
 		"""
 		return sum(job.weight for job in self.get_status()[1][Job.RUNNING])
 
-	def start(self, *args, **kwargs):
+	def start(self, parallel=None, *args, **kwargs):
 		"""
 			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
@@ -416,20 +414,26 @@ class Queue(object):
 		elif self.weight:
 			W = self.weight
 			self._log('starting jobs with weight %d (by fixed weight)' % self.weight)
-		self.start_weight(W)
+		self.start_weight(W, parallel=parallel)
 
-	def start_weight(self, weight, *args, **kwargs):
+	def start_weight(self, weight, parallel=None, *args, **kwargs):
 		"""
 			(Re)start jobs with an approximation of total weight.
 		"""
+		parallel = self.parallel if parallel is None else parallel
+		parallel = False  # override because it's slow in this case, somehow...
+		batch = []
 		jobs = self.get_jobs_by_weight(weight)
 		if len(jobs):
 			self.distribute_jobs(jobs = jobs)
-			start_count = 0
 			for node_nr, jobs in self.distribution.items():
 				for job in jobs:
-					job.cleanup(*args, **kwargs)
-					start_count += int(job.start(self.nodes[node_nr], *args, **kwargs))
+					batch.append((job, self.nodes[node_nr]))
+			if parallel:
+				statuses = get_pool_light().map(partial(_start_job_on_node, **kwargs), batch)
+			else:
+				statuses = map(partial(_start_job_on_node, **kwargs), batch)
+			start_count = sum(int(status) for status in statuses)
 			self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
 		else:
 			self._log('no jobs to restart' if self.restart else 'no jobs to start')
@@ -442,7 +446,6 @@ class Queue(object):
 		else:
 			parts = out.splitlines()[-1].split()
 			used, avail = float(parts[0]), float(parts[1])
-			print(avail - used, used / avail)
 			if avail - used < 1e7 and used / avail > 0.8:
 				warning('there is only {0:d}MB free ({1:d}%)'.format(
 					int((avail - used) / 1024), int(100 * (1 - float(used) / avail))))
@@ -482,15 +485,12 @@ class Queue(object):
 		"""
 			Fix jobs, e.g. after fixes and updates.
 		"""
-		fix_count = 0
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
-			assert not args, 'positional arguments can\t be used in parallel mode, sorry (got {0:})'.format(args)
-			statuses = get_pool_light().map(job_task('fix', **kwargs), self.jobs)
-			fix_count = sum(int(status) for status in statuses)
+			statuses = thread_map(job_task('fix', **kwargs), self.jobs)
 		else:
-			for job in self.jobs:
-				fix_count += int(job.fix(*args, **kwargs))
+			statuses = (job.fix(**kwargs) for job in self.jobs)
+		fix_count = sum(int(status) for status in statuses)
 		self._log('fixed %d jobs' % fix_count)
 
 	def kill(self, *args, **kwargs):
@@ -502,15 +502,18 @@ class Queue(object):
 			kill_count += int(job.kill(*args, **kwargs))
 		self._log('killed %d jobs' % kill_count)
 
-	def cleanup(self, *args, **kwargs):
+	def cleanup(self, parallel=None, *args, **kwargs):
 		"""
 			Clean up all the currently added jobs (remove files).
 		"""
-		clean_count = 0
-		for job in self.jobs:
-			if job.cleanup(*args, **kwargs):
-				clean_count += 1
-		self._log('cleaned up %d jobs' % clean_count)
+		parallel = self.parallel if parallel is None else parallel
+		if parallel:
+			#statuses = get_pool_light().map(job_task('cleanup', **kwargs), self.jobs)
+			statuses = thread_map(job_task('cleanup', **kwargs), self.jobs)
+		else:
+			statuses = (job.cleanup(**kwargs) for job in self.jobs)
+		cleanup_count = sum(int(status) for status in statuses)
+		self._log('cleaned up %d jobs' % cleanup_count)
 
 	def get_status(self, parallel=None, **kwargs):
 		"""
@@ -518,7 +521,7 @@ class Queue(object):
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
-			status_res = get_pool_light().map(job_task('find_status', **kwargs), self.jobs)
+			status_res = thread_map(job_task('find_status', **kwargs), self.jobs)
 			statuses = dict(zip(self.jobs, status_res))
 		else:
 			statuses = {}
@@ -651,8 +654,11 @@ class Queue(object):
 		parallel = self.parallel if parallel is None else parallel
 		reasons = OrderedDict()
 		if parallel:
-			resli = get_pool_light().map(job_task('_crash_reason_if_crashed', verbosity=verbosity), self.jobs)
+			#resli = get_pool_light().map(job_task('_crash_reason_if_crashed', verbosity=verbosity), self.jobs)
+			#resli = thread_map(job_task('_crash_reason_if_crashed', verbosity=verbosity), self.jobs)
+			resli = [job._crash_reason_if_crashed(verbosity=verbosity) for job in self.jobs]
 		else:
+			#resli = thread_map(job_task('_crash_reason_if_crashed', verbosity=verbosity), self.jobs)
 			resli = [job._crash_reason_if_crashed(verbosity=verbosity) for job in self.jobs]
 		for job, res in zip(self.jobs, resli):
 			if res is not None:
@@ -736,5 +742,11 @@ class Queue(object):
 				action(verbosity=args.verbosity, parallel=args.parallel)
 
 		return [str(action.__name__) for action in actions]
+
+
+def _start_job_on_node(info, **kwargs):
+	job, node = info
+	# job.cleanup(**kwargs)
+	return job.start(node, **kwargs)
 
 

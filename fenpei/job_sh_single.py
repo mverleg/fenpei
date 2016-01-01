@@ -39,6 +39,7 @@ class ShJobSingle(ShJob):
 		""" Override the whole ShJob init because it's very inefficient if all substitutions are the same """
 		""" This skips one inheritance level! """
 		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name)
+		self.new_format = new_format
 		self.use_symlink = use_symlink
 		extend_substitutions(self.substitutions, name, batch_name, self.directory)
 		if not hasattr(self.__class__, '_FIXED_CACHE'):
