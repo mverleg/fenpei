@@ -7,13 +7,13 @@
 
 from copy import copy
 from logging import warning
-from fenpei.job_sh import ShJob
+from fenpei.job_sh import ShJob, extend_substitutions
 
 
 class ShJobSingle(ShJob):
 
-	def __init__(self, name, subs, sub_files = [], nosub_files = [], weight = 1, batch_name = None,
-			defaults_version = 1, new_format = False, skip_checks=False, use_symlink=True):
+	def __init__(self, name, subs, sub_files=(), nosub_files=(), weight=1, batch_name=None,
+			defaults_version=1, new_format=False, skip_checks=False, use_symlink=True):
 		"""
 			Similar to ShJob.
 
@@ -36,11 +36,18 @@ class ShJobSingle(ShJob):
 		self.substitutions = checked_subs
 		for key, val in checked_subs.items():
 			setattr(self, key, val)
-		""" Convert to per-file format to make a ShJob. """
-		substitutions = {filepath: checked_subs for filepath in self.get_sub_files() + sub_files}
-		substitutions.update({filepath: None for filepath in self.get_nosub_files() + nosub_files})
-		super(ShJobSingle, self).__init__(name = name, substitutions = substitutions, weight = weight,
-			batch_name = batch_name, new_format = new_format, use_symlink=use_symlink)
+		""" Override the whole ShJob init because it's very inefficient if all substitutions are the same """
+		""" This skips one inheritance level! """
+		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name)
+		self.use_symlink = use_symlink
+		extend_substitutions(self.substitutions, name, batch_name, self.directory)
+		if not hasattr(self.__class__, '_FIXED_CACHE'):
+			""" Create the (path, name) -> subst map, but use True instead of the map. """
+			files = {filepath: None for filepath in self.get_nosub_files() + list(nosub_files)}
+			files.update({filepath: True for filepath in self.get_sub_files() + list(sub_files)})
+			self.__class__._FIXED_CACHE = self._fix_files(files)
+		""" Now fill in the substitutions (in a copied version). """
+		self.files = {fileinfo: copy(self.substitutions) if subs is True else None for fileinfo, subs in self.__class__._FIXED_CACHE.items()}
 
 	def check_and_update_subs(self, subs, *args, **kwargs):
 		return subs

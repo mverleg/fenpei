@@ -15,7 +15,7 @@ from collections import Mapping
 from os import listdir, symlink
 from os.path import join, basename, isdir, isfile, dirname, exists
 from shutil import copyfile
-from bardeen.system import mkdirp, link_else_copy
+from bardeen.system import mkdirp
 from fenpei.job import Job
 from fenpei.shell import run_shell
 from datetime import datetime
@@ -23,9 +23,26 @@ from time import time
 from shell import git_current_hash
 
 
+def extend_substitutions(subst, name, batch, directory, git_hash=None):
+	timestr = datetime.now().strftime('%Y-%m-%d %H:%M') + ' (%d)' % time()
+	if git_hash is None:
+		git_hash = git_current_hash()
+	if isinstance(subst, Mapping):
+		subst['name'] = name
+		subst['batch_name'] = batch
+		subst['now'] = timestr
+		subst['directory'] = directory
+		subst['hostname'] = gethostname()
+		subst['git_commit'] = git_hash
+	elif subst is None:
+		pass
+	else:
+		raise NotImplementedError('I haven\'t thought about this, maybe it\'s not needed anyway.')
+
+
 class ShJob(Job):
 
-	def __init__(self, name, substitutions, weight = 1, batch_name = None, new_format = False, use_symlink=True):
+	def __init__(self, name, substitutions, weight=1, batch_name=None, new_format=False, use_symlink=True):
 		"""
 			Create a executable or shell job object, provided a number of files or directories which will be copied,
 			and (optionally) substitutions for each of them.
@@ -36,31 +53,20 @@ class ShJob(Job):
 
 			For other parameters, see :ref: Job.
 
-			Files will be copied if bool(files) is True (for substritutions), otherwise it will be attempted to
+			Files will be copied if bool(files) is True (for substitutions), otherwise it will be attempted to
 			hard-link them (use True to prevent that with no substitutions); if you use a directory, /path/ copies
 			files from it and /path copies the directory with files; directory substitutions apply to contained files.
 		"""
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
 		super(ShJob, self).__init__(name = name, weight = weight, batch_name = batch_name)
-		timestr = datetime.now().strftime('%Y-%m-%d %H:%M') + ' (%d)' % time()
 		git_commit = git_current_hash()
 		for filepath, subst in substitutions.items():
-			if isinstance(subst, Mapping):
-				subst['name'] = name
-				subst['batch_name'] = batch_name
-				subst['now'] = timestr
-				subst['directory'] = self.directory
-				subst['hostname'] = gethostname()
-				subst['git_commit'] = git_commit
-			elif subst is None:
-				pass
-			else:
-				raise NotImplementedError('I haven\'t thought about this, maybe it\'s not needed anyway.')
+			extend_substitutions(subst, name, batch_name, self.directory, git_hash=git_commit)
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
 		self.new_format = new_format
 		self.use_symlink = use_symlink
-		self._fix_files()
+		self.files = self._fix_files(self.files)
 
 	@classmethod
 	def get_files(cls):
@@ -86,7 +92,7 @@ class ShJob(Job):
 			File was not found exception.
 		"""
 
-	def _fix_files(self):
+	def _fix_files(self, files):
 		"""
 			Check that self.files is filled with valid values (files exist etc).
 
@@ -111,7 +117,7 @@ class ShJob(Job):
 				return [(pre_path, post_path)]
 
 		newfiles = {}
-		for filepath, subst in self.files.items():
+		for filepath, subst in files.items():
 			if not isinstance(filepath, tuple) and not isinstance(filepath, list):
 				""" change string path into tuple """
 				filepath = dirname(filepath), basename(filepath)
@@ -120,7 +126,7 @@ class ShJob(Job):
 				newfiles[path_pair] = subst
 			if not exists(join(*filepath)):
 				raise self.FileNotFound('"%s" is not a valid file or directory' % join(*filepath))
-		self.files = newfiles
+		return newfiles
 
 	def is_prepared(self):
 		"""
@@ -138,7 +144,7 @@ class ShJob(Job):
 		"""
 			Prepares the job for execution by copying or linking all the files, and substituting values where applicable.
 		"""
-		self._fix_files()
+		#self._fix_files()  # todo: this shouldn't be necessary, but leaving a note just in case it causes problems
 		super(ShJob, self).prepare(*args, **kwargs)
 		if self.is_prepared():
 			return False
@@ -197,5 +203,4 @@ class ShJob(Job):
 		pid = self.queue.run_cmd(job = self, cmd = cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
-
 
