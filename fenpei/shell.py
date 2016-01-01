@@ -1,7 +1,7 @@
 
 import sys
+from os import getcwd
 from subprocess import Popen, PIPE
-
 
 """
 	Keep a list of processes to stop them from being terminated if their reference goes out of scope.
@@ -61,11 +61,16 @@ def run_cmds(cmds, wait = True, queue = None):
 
 
 def git_current_hash():
-	process = Popen('git rev-parse --verify HEAD', shell = True, stdout = PIPE, stderr = PIPE)
-	outp, err = process.communicate()
-	if err:
-		return '[no git commit found]'
-	return outp.strip()
+	def getit():
+		process = Popen('git rev-parse --verify HEAD', shell = True, stdout = PIPE, stderr = PIPE)
+		outp, err = process.communicate()
+		if err:
+			return '[no git commit found]'
+		return outp.strip()
+	setattr(git_current_hash, '_CACHE', getattr(git_current_hash, '_CACHE', {}))
+	if getcwd() not in git_current_hash._CACHE:
+		git_current_hash._CACHE[getcwd()] = getit()
+	return git_current_hash._CACHE[getcwd()]
 
 
 if __name__ == '__main__':
