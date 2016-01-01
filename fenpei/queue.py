@@ -509,9 +509,9 @@ class Queue(object):
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
 			#statuses = get_pool_light().map(job_task('cleanup', **kwargs), self.jobs)
-			statuses = thread_map(job_task('cleanup', **kwargs), self.jobs)
+			statuses = thread_map(job_task('cleanup', skip_conflicts=self.restart, **kwargs), self.jobs)
 		else:
-			statuses = (job.cleanup(**kwargs) for job in self.jobs)
+			statuses = (job.cleanup(skip_conflicts=self.restart, **kwargs) for job in self.jobs)
 		cleanup_count = sum(int(status) for status in statuses)
 		self._log('cleaned up %d jobs' % cleanup_count)
 
@@ -588,6 +588,7 @@ class Queue(object):
 			(Not used for compare_jobs, so parallelism has little effect.)
 		"""
 		parallel = self.parallel if parallel is None else parallel
+		parallel = False  # override because parallel is much slower for some reason.
 		if jobs is None:
 			jobs = self.jobs
 		results = OrderedDict()
@@ -681,7 +682,7 @@ class Queue(object):
 		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
 		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of failing with a warning')
-		parser.add_argument('-e', '--restart', dest = 'restart', action = 'store_true', help = 'toggle restarting failed jobs')
+		parser.add_argument('-e', '--restart', dest = 'restart', action = 'store_true', help = 'with this, start and cleanup ignore complete (/running) jobs')
 		parser.add_argument('-a', '--availability', dest = 'availability', action = 'store_true', help = 'list all available nodes and their load (cache reload)')
 		parser.add_argument('-d', '--distribute', dest = 'distribute', action = 'store_true', help = 'distribute the jobs over available nodes')
 		parser.add_argument('-l', '--list', dest = 'actions', action = 'append_const', const = self.list_jobs, help = 'show a list of added jobs')
@@ -722,10 +723,12 @@ class Queue(object):
 		if args.distribute:
 			self.distribute_jobs()
 
-		if not self.start in actions:
-			if self.restart:
-				self._log('you requested that failed jobs be restarted, but didn\'t specify a start command [-c]')
+		if self.restart:
+			if self.start not in actions and self.cleanup not in actions:
+				self._log('you requested that restart/cleanup apply only to failed jobs, but didn\'t specify a start or cleanup command [-c]')
 				return
+
+		if self.start not in actions:
 			if self.all:
 				self._log('you requested that all jobs be started, but didn\'t specify a start command [-c]')
 				return

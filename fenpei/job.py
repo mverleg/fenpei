@@ -189,9 +189,8 @@ class Job(object):
 					if self.is_running():
 						self.kill()
 				else:
-					self._log('you are trying to restart a job that is running or completed; ' + \
+					raise AssertionError('you are trying to restart a job that is running or completed; ' + \
 						'use restart (-e) to skip such jobs or -f to overrule this warning')
-					exit()
 		if not self.is_prepared():
 			self.prepare(silent=True)
 
@@ -237,18 +236,18 @@ class Job(object):
 			self._log('killing %s: %s on %s' % (self, self.pid, self.node), level = 2)
 			self.queue.stop_job(node = self.node, pid = self.pid)
 			return True
-		else:
-			self._log('job %s not running' % self, level = 2)
-			return False
+		self._log('job %s not running' % self, level = 3)
+		return False
 
-	def cleanup(self, *args, **kwargs):
+	def cleanup(self, skip_conflicts=False, *args, **kwargs):
 		if self.is_running() or self.is_complete():
 			if not self.queue is None:
 				if not self.queue.force:
-					self._log('you are trying to clean up a job that is running or completed; ' + \
-						'if you are sure you want to do this, use -f (it could also mean that two jobs' + \
-					    'are use the same name and batchname).')
-					exit()
+					if skip_conflicts:
+						return False
+					raise AssertionError('you are trying to clean up a job that is running or completed; ' + \
+						'use -f to force this, or -e to skip these jobs (it could also mean that two jobs' + \
+						'are use the same name and batchname).')
 		if isdir(self.directory):
 			rmtree(self.directory, ignore_errors = True)
 			self._log('cleaned up {0:s}'.format(self), level=2)
