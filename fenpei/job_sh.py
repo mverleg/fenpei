@@ -9,13 +9,15 @@
 	* get_files
 	* run_file
 """
-
+from json import dumps
 from socket import gethostname
 from collections import Mapping
 from os import listdir, symlink
 from os.path import join, basename, isdir, isfile, dirname, exists
 from shutil import copyfile
-from bardeen.system import mkdirp, link_else_copy
+from bardeen.system import mkdirp
+from profilehooks import profile
+
 from fenpei.job import Job
 from fenpei.shell import run_shell
 from datetime import datetime
@@ -81,11 +83,6 @@ class ShJob(Job):
 		"""
 		raise NotImplementedError()
 
-	class FileNotFound(OSError):
-		"""
-			File was not found exception.
-		"""
-
 	def _fix_files(self):
 		"""
 			Check that self.files is filled with valid values (files exist etc).
@@ -94,33 +91,17 @@ class ShJob(Job):
 
 			Expands all directories into lists of files.
 
-			:raise ShJob.FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
+			:raise FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
 		"""
-		def expand_dir(pre_path, post_path):
-			"""
-				Expand a tuple (predir, postdir) into all the files in that directory.
-			"""
-			fullpath = join(pre_path, post_path)
-			subs = []
-			if isdir(fullpath):
-				for subpath in listdir(fullpath):
-					subs.extend(expand_dir(pre_path = pre_path,
-						post_path = join(fullpath, subpath).lstrip(pre_path)))
-				return subs
-			else:
-				return [(pre_path, post_path)]
-
-		newfiles = {}
-		for filepath, subst in self.files.items():
-			if not isinstance(filepath, tuple) and not isinstance(filepath, list):
-				""" change string path into tuple """
-				filepath = dirname(filepath), basename(filepath)
-			for path_pair in expand_dir(*filepath):
-				""" recursively expand a directory into all it's files """
-				newfiles[path_pair] = subst
-			if not exists(join(*filepath)):
-				raise self.FileNotFound('"%s" is not a valid file or directory' % join(*filepath))
-		self.files = newfiles
+		#todo: this is very slow, 16% of -s, mostly due to checking filesystem
+		key = dumps(self.files.items(), sort_keys=True)
+		print key
+		if not hasattr(ShJob, '_FIXES_CACHE'):
+			ShJob._FIXES_CACHE = {}
+		if key not in ShJob._FIXES_CACHE:
+			ShJob._FIXES_CACHE[key] = _do_fix_files(self.files)
+		print 'cache len', len(ShJob._FIXES_CACHE), '\n'
+		self.files = ShJob._FIXES_CACHE[key]
 
 	def is_prepared(self):
 		"""
@@ -183,7 +164,7 @@ class ShJob(Job):
 		if isfile(join(self.directory, self.run_file())):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:
-			raise self.FileNotFound(('.run_file() "%s" not found after preparation; make sure it\'s origin is in ' +
+			raise FileNotFound(('.run_file() "%s" not found after preparation; make sure it\'s origin is in ' +
 				'.get_files() or in __init__ substitutions argument') % self.run_file())
 		return True
 
@@ -197,5 +178,43 @@ class ShJob(Job):
 		pid = self.queue.run_cmd(job = self, cmd = cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
+
+
+class FileNotFound(OSError):
+	"""
+		File was not found exception.
+	"""
+
+
+#@profile
+def _do_fix_files(files):
+	"""
+		Used by job._fix_files()
+	"""
+	def expand_dir(pre_path, post_path):
+		"""
+			Expand a tuple (predir, postdir) into all the files in that directory.
+		"""
+		fullpath = join(pre_path, post_path)
+		subs = []
+		if isdir(fullpath):
+			for subpath in listdir(fullpath):
+				subs.extend(expand_dir(pre_path = pre_path,
+					post_path = join(fullpath, subpath).lstrip(pre_path)))
+			return subs
+		else:
+			return [(pre_path, post_path)]
+
+	newfiles = {}
+	for filepath, subst in files.items():
+		if not isinstance(filepath, tuple) and not isinstance(filepath, list):
+			""" change string path into tuple """
+			filepath = dirname(filepath), basename(filepath)
+		for path_pair in expand_dir(*filepath):
+			""" recursively expand a directory into all it's files """
+			newfiles[path_pair] = subst
+		if not exists(join(*filepath)):
+			raise FileNotFound('"%s" is not a valid file or directory' % join(*filepath))
+	return newfiles
 
 
