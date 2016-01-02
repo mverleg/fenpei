@@ -644,7 +644,7 @@ class Queue(object):
 		""" job -> result """
 		results = self.result(jobs=jobmap.values())
 		""" param -> result [if complete] """
-		return {parval: results[job] for parval, job in jobmap.items() if results[job] is not None}
+		return OrderedDict((parval, results[job]) for parval, job in jobmap.items() if results[job] is not None)
 
 	def get_crash_reason(self, parallel=None, verbosity=0):
 		"""
