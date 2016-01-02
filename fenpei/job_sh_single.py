@@ -13,7 +13,7 @@ from fenpei.job_sh import ShJob, extend_substitutions
 class ShJobSingle(ShJob):
 
 	def __init__(self, name, subs, sub_files=(), nosub_files=(), weight=1, batch_name=None,
-			defaults_version=1, new_format=False, skip_checks=False, use_symlink=True):
+			defaults_version=1, new_format=False, skip_checks=False, use_symlink=True, force_node=None):
 		"""
 			Similar to ShJob.
 
@@ -38,7 +38,7 @@ class ShJobSingle(ShJob):
 			setattr(self, key, val)
 		""" Override the whole ShJob init because it's very inefficient if all substitutions are the same """
 		""" This skips one inheritance level! """
-		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name)
+		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name, force_node=force_node)
 		self.new_format = new_format
 		self.use_symlink = use_symlink
 		extend_substitutions(self.substitutions, name, batch_name, self.directory)

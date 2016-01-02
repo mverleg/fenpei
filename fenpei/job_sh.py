@@ -42,7 +42,7 @@ def extend_substitutions(subst, name, batch, directory, git_hash=None):
 
 class ShJob(Job):
 
-	def __init__(self, name, substitutions, weight=1, batch_name=None, new_format=False, use_symlink=True):
+	def __init__(self, name, substitutions, weight=1, batch_name=None, new_format=False, use_symlink=True, force_node=None):
 		"""
 			Create a executable or shell job object, provided a number of files or directories which will be copied,
 			and (optionally) substitutions for each of them.
@@ -58,7 +58,7 @@ class ShJob(Job):
 			files from it and /path copies the directory with files; directory substitutions apply to contained files.
 		"""
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
-		super(ShJob, self).__init__(name = name, weight = weight, batch_name = batch_name)
+		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name, force_node=force_node)
 		git_commit = git_current_hash()
 		for filepath, subst in substitutions.items():
 			extend_substitutions(subst, name, batch_name, self.directory, git_hash=git_commit)

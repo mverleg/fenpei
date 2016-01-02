@@ -583,9 +583,7 @@ class Queue(object):
 
 	def result(self, parallel=None, jobs=None, *args, **kwargs):
 		"""
-			:return: a dict of job results, with names as keys
-
-			(Not used for compare_jobs, so parallelism has little effect.)
+			:return: a dict of job results, with jobs as keys.
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		parallel = False  # override because parallel is much slower for some reason.
@@ -667,12 +665,12 @@ class Queue(object):
 		self._log('retrieved crash reasons for %d jobs' % len(reasons))
 		return reasons
 
-	def crash_reason(self, parallel=None, verbosity=0, line_len=80, *args, **kwargs):
+	def crash_reason(self, parallel=None, verbosity=0, line_len=70, *args, **kwargs):
 		reasons = self.get_crash_reason(parallel=parallel, verbosity=verbosity)
 		for job, reason in reasons.items():
 			txt = [reason[k:k+line_len] for k in range(0, len(reason), line_len)]
 			for k, line in enumerate(txt):
-				stdout.write('{0:20s} {1:}\n'.format(str(job) if k==0 else '', line))
+				stdout.write('{0:28s} {1:}\n'.format('{0:}/{1:}'.format(job.batch_name, job.name) if k==0 else '', line))
 
 	def run_argv(self):
 		"""

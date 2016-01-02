@@ -101,12 +101,16 @@ class QsubQueue(Queue):
 			Start an individual job by means of queueing a shell command.
 		"""
 		self._test_qstat()
+		queue = self.qname
+		if job.force_node:
+			queue = '{0:s}@{1:s}'.format(self.qname, job.force_node)
+			self._log('job {0:s} forced queue {1:s}'.format(job, queue), level=2)
 		assert job.directory
 		subcmd = [
 			'qsub',                             # wait in line
 				'-b', 'y',                      # it's a binary
 				'-cwd',                         # use the current working directory
-				'-q', self.qname,               # which que to wait in
+				'-q', queue,                    # which que to wait in
 				'-N', job.name,                 # name of the job
 				#'-l slots={0:d}'.format(job.weight), # number of slots = weight of job
 					#check this; maybe it's threads rather than processes

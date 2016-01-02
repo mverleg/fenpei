@@ -36,13 +36,14 @@ class Job(object):
 	''' Set a group_cls to report results together with another class (that has the same output format). '''
 	group_cls = None
 
-	def __init__(self, name, weight = 1, batch_name = None):
+	def __init__(self, name, weight=1, batch_name=None, force_node=None):
 		"""
 			Create a Job object.
 
 			:param name: unique name consisting of letters, numbers, dot (.) and underscore (_) **YOU need to make sure that name is unique (bijectively maps to job)**
 			:param weight: the relative resource use of this job (higher relative weights means fewer jobs will be scheduled together)
 			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
+			:param force_node: demand a specific node; it's up to the queue whether this is honoured
 		"""
 		assert match(r'^\w[/\w\.\+_-]*$', name), 'This is not a valid name: "{0:}"'.format(name)
 		assert weight > 0
@@ -50,6 +51,7 @@ class Job(object):
 		self.weight = weight
 		self.cluster = None
 		self.batch_name = batch_name
+		self.force_node = force_node
 		if self.batch_name:
 			assert match('^\w[\w\._-]*$', batch_name)
 			self.directory = join(CALC_DIR, batch_name, name)
