@@ -445,7 +445,7 @@ class Queue(object):
 			""" No quota """
 		else:
 			parts = out.splitlines()[-1].split()
-			used, avail = float(parts[0]), float(parts[1])
+			used, avail = float(parts[0].strip('*')), float(parts[1].strip('*'))
 			if avail - used < 1e7 and used / avail > 0.8:
 				warning('there is only {0:d}MB free ({1:d}%)'.format(
 					int((avail - used) / 1024), int(100 * (1 - float(used) / avail))))
