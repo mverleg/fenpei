@@ -313,9 +313,9 @@ class Queue(object):
 		"""
 			Add list of jobs to the queue.
 		"""
-
 		for job in jobs:
 			self.add_job(job)
+		self._same_path_check()
 		return self
 
 	def get_jobs(self):
@@ -396,6 +396,7 @@ class Queue(object):
 			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
 		self._quota_warning()
+		self._same_path_check(fail=True)
 		W = None
 		if self.all:
 			if self.weight:
@@ -438,7 +439,7 @@ class Queue(object):
 		else:
 			self._log('no jobs to restart' if self.restart else 'no jobs to start')
 
-	def _quota_warning(self, *args, **kwargs):
+	def _quota_warning(self):
 		try:
 			out, err = Popen(['quota', '-Q'], stdout=PIPE, stderr=PIPE).communicate()
 		except OSError:
@@ -449,6 +450,22 @@ class Queue(object):
 			if avail - used < 1e7 and used / avail > 0.8:
 				warning('there is only {0:d}MB free ({1:d}%)'.format(
 					int((avail - used) / 1024), int(100 * (1 - float(used) / avail))))
+
+	def _same_path_check(self, fail=False):
+		pths = set()
+		found = 0
+		for job in self.jobs:
+			if (job.batch_name, job.name) in pths:
+				msg = 'there are multiple jobs with location {0:s}/{1:s}'.format(job.batch_name, job.name)
+				if fail:
+					raise AssertionError(msg)
+				found += 1
+				if found >= 3:
+					warning(msg + '. Stopping duplicate checks now.')
+					break
+				warning(msg)
+			pths.add((job.batch_name, job.name))
+		return pths
 
 	def get_jobs_by_weight(self, max_weight):
 		"""
