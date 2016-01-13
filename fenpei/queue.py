@@ -757,7 +757,7 @@ class Queue(object):
 		self.parallel = args.parallel
 		if actions:
 			for action in args.actions:
-				action(verbosity=args.verbosity, parallel=args.parallel)
+				action(verbosity=args.verbosity, parallel=args.parallel, force=args.force)
 
 		return [str(action.__name__) for action in actions]
 

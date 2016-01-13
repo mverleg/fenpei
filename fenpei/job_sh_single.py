@@ -8,6 +8,8 @@ from collections import OrderedDict
 from copy import copy
 from json import dump, load
 from logging import warning
+from os import remove
+
 from os.path import join, exists
 from fenpei.job_sh import ShJob, extend_substitutions
 
@@ -97,12 +99,23 @@ class ShJobSingle(ShJob):
 		self.store_config()
 		return status
 
-	def fix(self, verbosity=0, *args, **kwargs):
-		is_fixed = False
-		if not exists(self.parameter_file_path):
+	def fix(self, verbosity=0, force=False, *args, **kwargs):
+		is_fixed = super(ShJobSingle, self).fix(verbosity=verbosity, *args, **kwargs)
+		if self.is_prepared() and not exists(self.parameter_file_path):
 			self.store_config()
+			self._log('stored parameters for {0:}'.format(self), level=2)
 			is_fixed = True
-		super(ShJobSingle, self).fix(verbosity=verbosity, *args, **kwargs) or is_fixed
+		try:
+			self.check_config()
+		except AssertionError as err:
+			if force:
+				remove(self.parameter_file_path)
+				self.store_config()
+				self._log('overwriting stored parameters for {0:} (because of -f)'.format(self), level=2)
+				is_fixed = True
+			else:
+				warning(str(err) + '; use -f to replace the file')
+		return is_fixed
 
 	def result(self, verbosity=0, *args, **kwargs):
 		self.check_config()
@@ -120,7 +133,7 @@ class ShJobSingle(ShJob):
 			dump(obj=store, fp=fh)
 
 	def check_config(self):
-		if self.is_prepared():
+		if not self.is_prepared():
 			return
 		try:
 			with open(self.parameter_file_path, 'r') as fh:
