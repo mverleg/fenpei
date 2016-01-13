@@ -4,9 +4,11 @@
 
 	Automatically adds all substitutions as attributes to the job.
 """
-
+from collections import OrderedDict
 from copy import copy
+from json import dump, load
 from logging import warning
+from os.path import join, exists
 from fenpei.job_sh import ShJob, extend_substitutions
 
 
@@ -25,6 +27,7 @@ class ShJobSingle(ShJob):
 		"""
 		""" Defaults for substitutions. """
 		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
+		self.parameter_named = list(subs_with_defaults)
 		for sub in subs.keys():
 			if sub not in subs_with_defaults:
 				warning('job "{0:}" has unknown substitution parameter "{1:s}" = "{2:}"'.format(self, sub, subs[sub]))
@@ -49,6 +52,8 @@ class ShJobSingle(ShJob):
 			self.__class__._FIXED_CACHE = self._fix_files(files)
 		""" Now fill in the substitutions (in a copied version). """
 		self.files = {fileinfo: copy(self.substitutions) if subs is True else None for fileinfo, subs in self.__class__._FIXED_CACHE.items()}
+		self.parameter_file_path = join(self.directory, 'parameters.json')
+
 
 	def check_and_update_subs(self, subs, *args, **kwargs):
 		return subs
@@ -86,5 +91,47 @@ class ShJobSingle(ShJob):
 		if subfiles:
 			return self.files[subfiles[0]]
 		return None
+
+	def prepare(self, verbosity=0, *args, **kwargs):
+		status = super(ShJobSingle, self).prepare(verbosity=verbosity, *args, **kwargs)
+		self.store_config()
+		return status
+
+	def fix(self, verbosity=0, *args, **kwargs):
+		is_fixed = False
+		if not exists(self.parameter_file_path):
+			self.store_config()
+			is_fixed = True
+		super(ShJobSingle, self).fix(verbosity=verbosity, *args, **kwargs) or is_fixed
+
+	def result(self, verbosity=0, *args, **kwargs):
+		self.check_config()
+		return super(ShJobSingle, self).result(verbosity=verbosity, *args, **kwargs)
+
+	def crash_reason(self, verbosity=0, *args, **kwargs):
+		self.check_config()
+		return super(ShJobSingle, self).crash_reason(verbosity=verbosity, *args, **kwargs)
+
+	def store_config(self):
+		store = OrderedDict()
+		for name in self.parameter_named:
+			store[name] = self.substitutions[name]
+		with open(self.parameter_file_path, 'w+') as fh:
+			dump(obj=store, fp=fh)
+
+	def check_config(self):
+		if self.is_prepared():
+			return
+		try:
+			with open(self.parameter_file_path, 'r') as fh:
+				retrieved = load(fp=fh)
+		except (OSError, IOError) as err:
+			raise AssertionError(('Job {0:} has no loadable stored parameters for consistency checking; ' +
+				'they can be created using -g [load error: {1:}]').format(self, err))
+		for name in self.parameter_named:
+			if not retrieved[name] == self.substitutions[name]:
+				raise AssertionError('parameter {0:} for job {1:} was initially an {2:} <{3:}> but is now {4:} <{5:}>'
+					.format(name, self, type(retrieved[name]).__name__, retrieved[name],
+					type(self.substitutions[name]).__name__, self.substitutions[name]))
 
 
