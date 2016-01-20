@@ -24,10 +24,11 @@ class QsubQueue(Queue):
 		"""
 			Specific nodes are irrelevant; everything in main queue.
 		"""
-		if not super(QsubQueue, self).all_nodes():
+		self._log('no specific nodes; all to general queue', level=2)
+		if self.load_nodes():
 			return False
-		self._log('no specific nodes; all to general queue')
 		self.nodes = [self.qname]
+		self.slots = []
 		return True
 
 	def node_availability(self):
@@ -37,7 +38,7 @@ class QsubQueue(Queue):
 		"""
 			Let qsub do the distributing by placing everything in general queue.
 		"""
-		self._log('call to distribute for %d jobs ignored; qsub will do distribution' % len(jobs))
+		self._log('call to distribute for %d jobs ignored; qsub will do distribution' % len(jobs), level=2)
 		self.all_nodes()
 		self.distribution = {0: jobs}
 

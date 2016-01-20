@@ -2,8 +2,8 @@
 """
 	Queue using qsub to start jobs.
 """
-from logging import warning
 
+from logging import warning
 from os import popen
 from os.path import join
 from repoze.lru import lru_cache
@@ -105,7 +105,7 @@ class SlurmQueue(Queue):
 			'\'{0:s}\''.format(cmd),
 		))
 		cdcmd = 'cd "{0:s}"'.format(job.directory)
-		outp = run_cmds((cdcmd, subcmd), queue=self)
+		outp = run_cmds((cdcmd, subcmd,), queue=self)
 		self._log(subcmd, level=3)
 		if not outp or not outp[1]:
 			print outp

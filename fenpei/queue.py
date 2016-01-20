@@ -146,7 +146,7 @@ class Queue(object):
 				timestamp = float(fh.read())
 				dt = time() - timestamp
 		except IOError:
-			self._log('no stored node info found')
+			self._log('no stored node info found', level=2)
 			return False
 		if dt < memory_time:
 			self._log('loaded node info (age: %ds)' % dt)

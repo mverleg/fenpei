@@ -12,6 +12,7 @@ from os import remove
 
 from os.path import join, exists
 from fenpei.job_sh import ShJob, extend_substitutions
+from fenpei.shell import run_cmds
 
 
 class ShJobSingle(ShJob):
@@ -97,6 +98,8 @@ class ShJobSingle(ShJob):
 	def prepare(self, verbosity=0, *args, **kwargs):
 		status = super(ShJobSingle, self).prepare(verbosity=verbosity, *args, **kwargs)
 		self.store_config()
+		chcmd = 'chmod 750 -R "{0:s}"'.format(self.directory)
+		outp = run_cmds((chcmd,), queue=self.queue)
 		return status
 
 	def fix(self, verbosity=0, force=False, *args, **kwargs):
