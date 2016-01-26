@@ -89,7 +89,13 @@ class SlurmQueue(Queue):
 		"""
 		self.test_slurm()
 		assert job.directory
-		subcmd = ' '.join((
+		node_flags = ()
+		if job.force_node:
+			node_flags = (
+				'--nodelist', job.force_node,
+				'--no-requeue',
+			)
+		core_flags = (
 			'sbatch',
 			'--job-name', '"{0:s}"'.format(job.name),
 			'--comment', '"{0:s}/{1:s} (weight {2:d})"'.format(job.batch_name, job.name, job.weight),
@@ -101,9 +107,8 @@ class SlurmQueue(Queue):
 			'--ntasks', '{0:d}'.format(job.weight),  # cores
 			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.out')),
 			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.err')),
-			'--no-requeue',
-			'\'{0:s}\''.format(cmd),
-		))
+		)
+		subcmd = ' '.join(core_flags + node_flags + ('\'{0:s}\''.format(cmd),))
 		cdcmd = 'cd "{0:s}"'.format(job.directory)
 		outp = run_cmds((cdcmd, subcmd,), queue=self)
 		self._log(subcmd, level=3)
