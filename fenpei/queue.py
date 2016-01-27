@@ -28,7 +28,6 @@ from .conf import get_pool_light, TMP_DIR, thread_map
 from functools import partial
 
 
-
 def job_task_run(job, method, **kwargs):
 	"""
 		Runs an arbitrary method of job; used by job_task.

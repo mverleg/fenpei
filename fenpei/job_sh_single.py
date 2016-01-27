@@ -4,13 +4,16 @@
 
 	Automatically adds all substitutions as attributes to the job.
 """
+from base64 import urlsafe_b64encode
 from collections import OrderedDict
 from copy import copy
 from json import dump, load
 from logging import warning
-from os import remove
+from time import time
 
+from os import remove
 from os.path import join, exists
+from struct import pack
 from fenpei.job_sh import ShJob, extend_substitutions
 from fenpei.shell import run_cmds
 
@@ -30,7 +33,7 @@ class ShJobSingle(ShJob):
 		"""
 		""" Defaults for substitutions. """
 		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
-		self.parameter_named = list(subs_with_defaults)
+		self.parameter_names = list(subs_with_defaults)
 		for sub in subs.keys():
 			if sub not in subs_with_defaults:
 				warning('job "{0:}" has unknown substitution parameter "{1:s}" = "{2:}"'.format(self, sub, subs[sub]))
@@ -57,6 +60,16 @@ class ShJobSingle(ShJob):
 		self.files = {fileinfo: copy(self.substitutions) if subs is True else None for fileinfo, subs in self.__class__._FIXED_CACHE.items()}
 		self.parameter_file_path = join(self.directory, 'parameters.json')
 
+	def _calc_param_hash(self):
+		param_data = hash(tuple(self.substitutions[nm] for nm in self.parameter_names))
+		return urlsafe_b64encode(pack('!q', param_data)).rstrip('=')
+
+	@property
+	def param_hash(self):
+		ShJobSingle._HASH_CACHE = getattr(ShJobSingle, '_HASH_CACHE', {})
+		if id(self) not in ShJobSingle._HASH_CACHE:
+			ShJobSingle._HASH_CACHE[id(self)] = self._calc_param_hash()
+		return ShJobSingle._HASH_CACHE[id(self)]
 
 	def check_and_update_subs(self, subs, *args, **kwargs):
 		return subs
@@ -66,7 +79,7 @@ class ShJobSingle(ShJob):
 		"""
 			:return: default values for substitutions
 		"""
-		return {}
+		return OrderedDict()
 
 	@classmethod
 	def get_files(cls):
@@ -130,7 +143,7 @@ class ShJobSingle(ShJob):
 
 	def store_config(self):
 		store = OrderedDict()
-		for name in self.parameter_named:
+		for name in self.parameter_names:
 			store[name] = self.substitutions[name]
 		with open(self.parameter_file_path, 'w+') as fh:
 			dump(obj=store, fp=fh)
@@ -144,7 +157,7 @@ class ShJobSingle(ShJob):
 		except (OSError, IOError) as err:
 			raise AssertionError(('Job {0:} has no loadable stored parameters for consistency checking; ' +
 				'they can be created using -g [load error: {1:}]').format(self, err))
-		for name in self.parameter_named:
+		for name in self.parameter_names:
 			if not retrieved[name] == self.substitutions[name]:
 				raise AssertionError('parameter {0:} for job {1:} was initially an {2:} <{3:}> but is now {4:} <{5:}>'
 					.format(name, self, type(retrieved[name]).__name__, retrieved[name],

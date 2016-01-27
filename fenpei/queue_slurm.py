@@ -81,7 +81,7 @@ class SlurmQueue(Queue):
 		"""
 			Remove individual job from queue.
 		"""
-		run_cmds(['scancel', '{0:d}'.format(pid)], queue=self)
+		run_cmds(['scancel {0:d}'.format(pid)], queue=self)
 
 	def run_cmd(self, job, cmd):
 		"""
@@ -105,8 +105,8 @@ class SlurmQueue(Queue):
 			'--mem', '{0:d}G'.format(job.weight),
 			'--nodes', '1',
 			'--ntasks', '{0:d}'.format(job.weight),  # cores
-			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.out')),
-			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.err')),
+			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.all')),
+			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 		)
 		subcmd = ' '.join(core_flags + node_flags + ('\'{0:s}\''.format(cmd),))
 		cdcmd = 'cd "{0:s}"'.format(job.directory)
