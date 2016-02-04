@@ -20,7 +20,7 @@ from datetime import datetime
 from collections import defaultdict, OrderedDict
 from argparse import ArgumentParser
 from os import remove
-from os.path import basename
+from os.path import basename, join
 from numpy import ceil
 from shell import run_cmds_on
 from fenpei.job import Job
@@ -320,12 +320,15 @@ class Queue(object):
 	def get_jobs(self):
 		return self.jobs
 
-	def list_jobs(self, cols=2, *args, **kwargs):
+	def list_jobs(self, cols=2, verbosity=0, *args, **kwargs):
 		N = int(ceil(len(self.jobs) / float(cols)))
 		for k in range(N):
 			print '  | '.join(
-				'{0:2d}. {1:20s} {2:>10s}'.format(p + 1, '{0:s} [{1:d}]'.format(self.jobs[p].name, self.jobs[p].weight), self.jobs[p].status_str())
-				for p in [k, k+N, k+2*N] if p < len(self.jobs)
+				'{0:2d}. {1:20s} {2:>10s}'.format(p + 1, '{0:s} [{1:d}]'.format(
+					join(self.jobs[p].batch_name, self.jobs[p].name) if verbosity else self.jobs[p].name,
+					self.jobs[p].weight
+				), self.jobs[p].status_str())
+					for p in [k, k+N, k+2*N] if p < len(self.jobs)
 			)
 
 	def run_job(self, job, filepath):
@@ -565,10 +568,10 @@ class Queue(object):
 		"""
 			Keep refreshing status until ctrl+C.
 		"""
-
 		self._log('monitoring status; use cltr+C to terminate')
 		lines = len(Job.status_names) + 1
 		print '\n' * lines
+		nothing_running_count = 0
 		while True:
 			try:
 				status_count, status_list = self.get_status()
@@ -580,6 +583,11 @@ class Queue(object):
 				reprint(txt, lines)
 
 				if not status_count[Job.RUNNING]:
+					nothing_running_count += 1
+				else:
+					nothing_running_count = 0
+
+				if nothing_running_count >= 3:
 					self._log('status monitoring terminated; no more running jobs')
 					break
 
@@ -602,7 +610,7 @@ class Queue(object):
 			:return: a dict of job results, with jobs as keys.
 		"""
 		parallel = self.parallel if parallel is None else parallel
-		parallel = False  # override because parallel is much slower for some reason.
+		# parallel = False  # override because parallel is much slower for some reason.
 		if jobs is None:
 			jobs = self.jobs
 		results = OrderedDict()

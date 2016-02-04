@@ -49,18 +49,20 @@ def thread_map(func, data):
 	return result
 
 
-def _make_inst(params, JobCls):
+def _make_inst(params, JobCls, default_batch=None):
+	if 'batch_name' not in params and default_batch:
+		params['batch_name'] = default_batch
 	return JobCls(**params)
 
 
-def create_jobs(JobCls, generator, parallel=True):
+def create_jobs(JobCls, generator, parallel=True, default_batch=None):
 	"""
 		Create jobs from parameters in parallel.
 	"""
 	if parallel:
-		jobs = get_pool_light().map(partial(_make_inst, JobCls=JobCls), tuple(generator))
+		jobs = get_pool_light().map(partial(_make_inst, JobCls=JobCls, default_batch=default_batch), tuple(generator))
 	else:
-		jobs = list(JobCls(**params) for params in generator)
+		jobs = list(_make_inst(params, JobCls=JobCls, default_batch=default_batch) for params in generator)
 	return jobs
 
 
