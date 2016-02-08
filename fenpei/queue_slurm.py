@@ -4,7 +4,7 @@
 """
 
 from logging import warning
-from os import popen
+from os import popen, environ
 from os.path import join
 from repoze.lru import lru_cache
 from fenpei.shell import run_cmds
@@ -91,9 +91,13 @@ class SlurmQueue(Queue):
 		assert job.directory
 		node_flags = ()
 		if job.force_node:
-			node_flags = (
+			node_flags += (
 				'--nodelist', job.force_node,
 				'--no-requeue',
+			)
+		if 'EXCLUDE_NODES' in environ:
+			node_flags += (
+				'--exclude', environ['EXCLUDE_NODES'],
 			)
 		core_flags = (
 			'sbatch',

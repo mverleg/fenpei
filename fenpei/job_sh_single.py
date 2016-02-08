@@ -157,6 +157,9 @@ class ShJobSingle(ShJob):
 		except (OSError, IOError) as err:
 			raise AssertionError(('Job {0:} has no loadable stored parameters for consistency checking; ' +
 				'they can be created using -g [load error: {1:}]').format(self, err))
+		before, now = set(retrieved.keys()), set(self.parameter_names)
+		assert not (before - now), 'settings disappeared compared to when job was run: {0:} (-gf to reset this check)'.format(', '.join(before - now))
+		assert not (now - before), 'new settings appeared compared to when job was run: {0:} (-gf to reset this check)'.format(', '.join(now - before))
 		for name in self.parameter_names:
 			if not retrieved[name] == self.substitutions[name]:
 				raise AssertionError('parameter {0:} for job {1:} was initially an {2:} <{3:}> but is now {4:} <{5:}>'

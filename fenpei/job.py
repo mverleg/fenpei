@@ -13,6 +13,7 @@
 
 	:: comment: make references
 """
+from logging import warning
 
 from re import match
 from sys import stdout
@@ -55,7 +56,9 @@ class Job(object):
 		if self.batch_name:
 			assert match('^\w[\w\._-]*$', batch_name)
 			self.directory = join(CALC_DIR, batch_name, name)
-		else:
+		elif batch_name is None:
+			raise AssertionError('no batch name for {0:}; provide batch_name argument when creating jobs or set it to False'.format(self))
+		elif batch_name is False:
 			self.directory = join(CALC_DIR, name)
 		self.status = self.NONE
 
