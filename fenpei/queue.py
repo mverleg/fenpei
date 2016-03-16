@@ -21,7 +21,7 @@ from collections import defaultdict, OrderedDict
 from argparse import ArgumentParser
 from os import remove
 from os.path import basename, join
-from numpy import ceil
+from math import ceil
 from shell import run_cmds_on
 from fenpei.job import Job
 from .conf import get_pool_light, TMP_DIR, thread_map
