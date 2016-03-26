@@ -7,8 +7,8 @@
 	- weight jobs
 	- get status info
 	- restart failed
-
 """
+
 from logging import warning
 from subprocess import PIPE
 from subprocess import Popen
@@ -722,9 +722,23 @@ class Queue(object):
 		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = summary, help = 'run analysis code to summarize results')
 		parser.add_argument('-t', '--whyfail', dest = 'actions', action = 'append_const', const = self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
 		parser.add_argument('-j', '--serial', dest = 'parallel', action = 'store_false', help = 'job commands (start, fix, etc) may NOT be run in parallel (parallel is faster but order of jobs and output is inconsistent)')
+		parser.add_argument('--jobs', dest='jobs', action = 'store', type=str, help = 'specify by name the jobs to (re)start, separated by whitespace')
 		# remaining letters: bjnu  [-i, -y and -o are available but have commmon meanings]
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
+
+		""" Handle only specific jobs by deleting the others (not the most clean perhaps, but good enough for the occasional use). """
+		if args.jobs:
+			job_selection = set(args.jobs.split())
+			for job in tuple(self.jobs):
+				if job.name in job_selection:
+					job_selection.remove(job.name)
+				else:
+					self.jobs.remove(job)
+			if job_selection:
+				self._log('specifically requested job(s) [{0:s}] was/were not found'
+					.format(', '.join(job_selection)), level=1)
+				exit(1)
 
 		actions = args.actions or []
 		self.show = args.verbosity + 1
