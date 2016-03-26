@@ -48,7 +48,7 @@ class Queue(object):
 		self.show = 1
 		self.force = False
 		self.restart = False
-		self.all = False
+		# self.all = False
 		self.weight = None
 		self.limit = None
 		self.jobs = []
@@ -400,13 +400,13 @@ class Queue(object):
 		self._quota_warning()
 		self._same_path_check(fail=True)
 		W = None
-		if self.all:
-			if self.weight:
-				self._log('starting all jobs; specific weight (-w) ignored')
-			if self.limit:
-				self._log('starting all jobs; limit weight (-q) ignored')
-			W = float('inf')
-		elif self.limit:
+		# if self.all:
+		# 	if self.weight:
+		# 		self._log('starting all jobs; specific weight (-w) ignored')
+		# 	if self.limit:
+		# 		self._log('starting all jobs; limit weight (-q) ignored')
+		W = float('inf')
+		if self.limit:
 			W = max(self.limit - self.running_weight(), 0)
 			if not self.weight:
 				self._log('starting jobs with weight %d (no minimum)' % W)
@@ -711,7 +711,7 @@ class Queue(object):
 		parser.add_argument('-p', '--prepare', dest = 'actions', action = 'append_const', const = self.prepare, help = 'prepare all the jobs')
 		parser.add_argument('-c', '--calc', dest = 'actions', action = 'append_const', const = self.start, help = 'start calculating one jobs, or see -z/-w/-q')
 		#parser.add_argument('-b', '--keepcalc', dest = 'actions', action = 'append_const', const = None, help = 'like -c, but keeps checking and filling')
-		parser.add_argument('-z', '--all', dest = 'all', action = 'store_true', help = '-c will start all jobs')
+		# parser.add_argument('-z', '--all', dest = 'all', action = 'store_true', help = '-c will start all jobs')
 		parser.add_argument('-w', '--weight', dest = 'weight', action = 'store', type = int, default = None, help = '-c will start jobs with total WEIGHT running')
 		parser.add_argument('-q', '--limit', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
 		parser.add_argument('-k', '--kill', dest = 'actions', action = 'append_const', const = self.kill, help = 'terminate the calculation of all the running jobs')
@@ -742,10 +742,10 @@ class Queue(object):
 
 		actions = args.actions or []
 		self.show = args.verbosity + 1
-		self.force, self.restart, self.all, self.weight, self.limit = \
-			args.force, args.restart, args.all, args.weight, args.limit
+		self.force, self.restart, self.weight, self.limit = \
+			args.force, args.restart, args.weight, args.limit
 
-		if not actions and not any((args.availability, args.distribute, self.restart, self.all, self.weight, self.limit,)):
+		if not actions and not any((args.availability, args.distribute, self.restart, self.weight, self.limit,)):
 			self._log('please provide some action')
 			parser.print_help()
 			return
@@ -765,9 +765,9 @@ class Queue(object):
 				return
 
 		if self.start not in actions:
-			if self.all:
-				self._log('you requested that all jobs be started, but didn\'t specify a start command [-c]')
-				return
+			# if self.all:
+			# 	self._log('you requested that all jobs be started, but didn\'t specify a start command [-c]')
+			# 	return
 			if self.weight:
 				self._log('you specified a weight for jobs to be started, but didn\'t specify a start command [-c]')
 				return
