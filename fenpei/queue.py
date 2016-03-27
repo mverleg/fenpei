@@ -385,21 +385,20 @@ class Queue(object):
 		"""
 			How many running jobs.
 		"""
-		return len(self.get_status()[1][Job.RUNNING])
+		return len(self.get_status()[Job.RUNNING])
 
 	def running_weight(self):
 		"""
 			Total weight of running jobs.
 		"""
-		return sum(job.weight for job in self.get_status()[1][Job.RUNNING])
+		return sum(job.weight for job in self.get_status()[Job.RUNNING])
 
-	def start(self, parallel=None, *args, **kwargs):
+	def start(self, parallel=None, verbosity=0, *args, **kwargs):
 		"""
 			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
 		self._quota_warning()
 		self._same_path_check(fail=True)
-		W = None
 		# if self.all:
 		# 	if self.weight:
 		# 		self._log('starting all jobs; specific weight (-w) ignored')
@@ -408,12 +407,13 @@ class Queue(object):
 		W = float('inf')
 		if self.limit:
 			W = max(self.limit - self.running_weight(), 0)
-			if not self.weight:
-				self._log('starting jobs with weight %d (no minimum)' % W)
-			elif W < self.weight:
-				self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
-			else:
-				self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))
+			if verbosity:
+				if not self.weight:
+					self._log('starting jobs with weight %d (no minimum)' % W)
+				elif W < self.weight:
+					self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
+				else:
+					self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))
 		elif self.weight:
 			W = self.weight
 			self._log('starting jobs with weight %d (by fixed weight)' % self.weight)
@@ -474,7 +474,7 @@ class Queue(object):
 			Find jobs with an approximation of total weight.
 		"""
 		""" find eligible jobs (in specific order) """
-		job_status = self.get_status()[1]
+		job_status = self.get_status()
 		if self.restart:
 			startable = job_status[Job.PREPARED] + job_status[Job.NONE] + job_status[Job.CRASHED]
 		else:
@@ -546,14 +546,14 @@ class Queue(object):
 			statuses = {}
 			for job in self.jobs:
 				statuses[job] = job.find_status(**kwargs)
-		status_count = defaultdict(int)
+		# status_count = defaultdict(int)
 		status_list = defaultdict(list)
 		for job, status in statuses.items():
-			status_count[status] += 1
+			# status_count[status] += 1
 			status_list[status].append(job)
-		return status_count, status_list
+		return status_list
 
-	def show_status(self, status_count, status_list, verbosity=0):
+	def show_status(self, status_list, verbosity=0):
 		"""
 			Show list of statusses.
 		"""
@@ -562,7 +562,13 @@ class Queue(object):
 			job_names = ' '.join(str(job) for job in status_list[status_nr])
 			if verbosity <= 0:
 				job_names = job_names if len(job_names) <= 40 else job_names[:37] + '...'
-			self._log(' %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names))
+				self._log(' {0:3d} {1:12s} {2:s}'.format(
+					len(status_list[status_nr]), Job.status_names[status_nr], job_names))
+			else:
+				weight = sum(job.weight for job in self.get_status()[status_nr])
+				stat_wght = '{1:s} ({0:d})'.format(weight, Job.status_names[status_nr])
+				self._log(' {0:3d} {2:18s} {1:s}'.format(
+					len(status_list[status_nr]), job_names, stat_wght))
 
 	def continuous_status(self, delay=5, *args, **kwargs):
 		"""
@@ -574,15 +580,15 @@ class Queue(object):
 		nothing_running_count = 0
 		while True:
 			try:
-				status_count, status_list = self.get_status()
+				status_list = self.get_status()
 
 				txt = '%s - job# %d; weight %d:' % (datetime.now().strftime('%H:%M:%S'), self.running_count(), self.running_weight())
 				for status_nr in status_list.keys():
 					job_names = ', '.join(str(job) for job in status_list[status_nr])
-					txt += '\n %3d %-12s %s' % (status_count[status_nr], Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...')
+					txt += '\n %3d %-12s %s' % (len(status_list[status_nr]), Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...')
 				reprint(txt, lines)
 
-				if not status_count[Job.RUNNING]:
+				if not status_list[Job.RUNNING]:
 					nothing_running_count += 1
 				else:
 					nothing_running_count = 0
@@ -602,8 +608,8 @@ class Queue(object):
 		"""
 			Get and show the status of jobs.
 		"""
-		status_count, status_list = self.get_status()
-		self.show_status(status_count, status_list, verbosity=verbosity)
+		status_list = self.get_status()
+		self.show_status(status_list, verbosity=verbosity)
 
 	def result(self, parallel=None, jobs=None, *args, **kwargs):
 		"""

@@ -13,7 +13,6 @@
 
 	:: comment: make references
 """
-from logging import warning
 
 from re import match
 from sys import stdout
@@ -125,8 +124,9 @@ class Job(object):
 		return l
 
 	def is_running(self):
-		if not self.is_prepared():
-			return False
+		"""
+		Only called if at least prepared.
+		"""
 		if self.pid is None:
 			if not self.load():
 				return False
@@ -140,12 +140,12 @@ class Job(object):
 
 	def is_complete(self):
 		"""
-			Check if job completed succesfully.
+			Check if job completed successfully.
 
 			Needs to be extended by child class.
+
+			Only called for jobs that are at least prepared.
 		"""
-		if not self.is_prepared():
-			return False
 		return True
 
 	def find_status(self):
@@ -153,17 +153,18 @@ class Job(object):
 			Find status using is_* methods.
 		"""
 		def check_status_indicators(self):
-			if self.is_complete():
-				return self.COMPLETED
-			if self.is_started():
-				if self.is_running():
-					return self.RUNNING
-				else:
-					return self.CRASHED
 			if self.is_prepared():
+				if self.is_complete():
+					return self.COMPLETED
+				elif self.is_started():
+					if self.is_running():
+						return self.RUNNING
+					return self.CRASHED
 				return self.PREPARED
 			return self.NONE
-		self.status = check_status_indicators(self)
+		if time() - getattr(self, '_last_status_time', time() + 100) < 1:
+			self.status = check_status_indicators(self)
+			setattr(self, '_last_status_time', time())
 		return self.status
 
 	def status_str(self):
