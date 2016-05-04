@@ -92,18 +92,18 @@ class SlurmQueue(Queue):
 		node_flags = ()
 		if job.force_node:
 			node_flags += (
-				'--nodelist', job.force_node,
+				'--nodelist', str(job.force_node),
 				'--no-requeue',
 			)
 		if 'EXCLUDE_NODES' in environ:
 			node_flags += (
-				'--exclude', environ['EXCLUDE_NODES'],
+				'--exclude', str(environ['EXCLUDE_NODES']),
 			)
 		core_flags = (
 			'sbatch',
 			'--job-name', '"{0:s}"'.format(job.name),
 			'--comment', '"{0:s}/{1:s} (weight {2:d})"'.format(job.batch_name, job.name, job.weight),
-			'--partition', self.partition,
+			'--partition', str(self.partition),
 			'--workdir', '"{0:s}"'.format(job.directory),
 			'--time', '03-00:00:00',
 			'--mem', '{0:d}G'.format(job.weight),

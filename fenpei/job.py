@@ -162,7 +162,7 @@ class Job(object):
 					return self.CRASHED
 				return self.PREPARED
 			return self.NONE
-		if time() - getattr(self, '_last_status_time', time() + 100) < 1:
+		if time() - getattr(self, '_last_status_time', time() - 100) > 0.7:
 			self.status = check_status_indicators(self)
 			setattr(self, '_last_status_time', time())
 		return self.status
