@@ -17,6 +17,14 @@ class SlurmQueue(Queue):
 	def __init__(self, jobs=None, partition=None, summary_func=None):
 		self.partition = partition or 'thchem'
 		super(SlurmQueue, self).__init__(jobs=jobs, summary_func=summary_func)
+		self.time_limit = '03-00:00:00'
+		partition_info = run_cmds(['sinfo -l --partition {0:s}'.format(self.partition)], queue=self)
+		if partition_info:
+			partition_lines = partition_info[0].splitlines()[2:]
+			if partition_lines:
+				time = partition_lines[0].split()[2]
+				if findall(r'^[-\d]*\d+:\d+:\d+$', time):
+					self.time_limit = time
 
 	def all_nodes(self):
 		"""
@@ -49,7 +57,7 @@ class SlurmQueue(Queue):
 		"""
 			Get slurm status for current user as a dictionary of properties.
 		"""
-		with popen('squeue --partition thchem --user $USER --format \'%A %B %P %T %u %j\'') as fh:
+		with popen('squeue --partition {0:s} --user $USER --format \'%A %B %P %T %u %j\''.format(self.partition)) as fh:
 			txt = fh.read()
 		parts = [line.split(None, 5) for line in txt.splitlines()[1:]]
 		jobs = []
@@ -105,7 +113,7 @@ class SlurmQueue(Queue):
 			'--comment', '"{0:s}/{1:s} (weight {2:d})"'.format(job.batch_name, job.name, job.weight),
 			'--partition', str(self.partition),
 			'--workdir', '"{0:s}"'.format(job.directory),
-			'--time', '03-00:00:00',
+			'--time', self.time_limit,
 			'--mem', '{0:d}G'.format(job.weight),
 			'--nodes', '1',
 			'--ntasks', '{0:d}'.format(job.weight),  # cores
