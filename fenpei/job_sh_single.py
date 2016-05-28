@@ -33,7 +33,7 @@ class ShJobSingle(ShJob):
 		"""
 		""" Defaults for substitutions. """
 		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
-		self.parameter_names = list(subs_with_defaults)
+		self.parameter_names = list(subs_with_defaults.keys())
 		for sub in subs.keys():
 			if sub not in subs_with_defaults:
 				warning('job "{0:}" has unknown substitution parameter "{1:s}" = "{2:}"'.format(self, sub, subs[sub]))
