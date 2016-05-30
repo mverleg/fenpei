@@ -22,10 +22,10 @@ from argparse import ArgumentParser
 from os import remove
 from os.path import basename, join
 from math import ceil
-from shell import run_cmds_on
-from fenpei.job import Job
-from .conf import get_pool_light, TMP_DIR, thread_map
 from functools import partial
+from .shell import run_cmds_on, run_cmds
+from .job import Job
+from .conf import get_pool_light, TMP_DIR, thread_map
 
 
 def job_task_run(job, method, **kwargs):
@@ -63,7 +63,7 @@ class Queue(object):
 		if summary_func is not None:
 			self.summary = summary_func
 
-	def _log(self, txt, level = 1):
+	def _log(self, txt, level=1):
 		"""
 			Report to user.
 		"""
@@ -702,33 +702,55 @@ class Queue(object):
 			for k, line in enumerate(txt):
 				stdout.write('{0:28s} {1:}\n'.format('{0:}/{1:}'.format(job.batch_name, job.name) if k==0 else '', line))
 
+	def run_cmd_per_job(self, cmd, parallel=None, verbosity=0, *args, **kwargs):
+		"""
+		Run a shell command in each job's directory (for --cmd).
+		"""
+		cmd_count = 0
+		for job in self.jobs:
+			if job.is_prepared():
+				self._log('running command for {0:s}'.format(job.name), level=2)
+				scmd = 'cd "{dir:s}"; export NAME="{name:s}" BATCH="{batch:s}" STATUS="{status:s}"; {cmd:s}'.format(
+					dir=job.directory, name=job.name, batch=job.batch_name,
+					status=job.status_names[job.status], cmd=cmd
+				)
+				self._log(scmd, level=3)
+				process = Popen([scmd], shell=True)
+				process.communicate()
+				cmd_count += 1
+		self._log('ran command `{1:s}` for {0:d} jobs'.format(cmd_count, cmd), level=1)
+
 	def run_argv(self):
 		"""
 			Analyze sys.argv and run commands based on it.
 		"""
-		def summary(queue = self, *args, **kwargs): self.summary(queue)
-		parser = ArgumentParser(description = 'distribute jobs over available nodes', epilog = 'actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
-		parser.add_argument('-v', '--verbose', dest = 'verbosity', action = 'count', default = 0, help = 'more information (can be used multiple times, -vv)')
-		parser.add_argument('-f', '--force', dest = 'force', action = 'store_true', help = 'force certain mistake-sensitive steps instead of failing with a warning')
-		parser.add_argument('-e', '--restart', dest = 'restart', action = 'store_true', help = 'with this, start and cleanup ignore complete (/running) jobs')
-		parser.add_argument('-a', '--availability', dest = 'availability', action = 'store_true', help = 'list all available nodes and their load (cache reload)')
-		parser.add_argument('-d', '--distribute', dest = 'distribute', action = 'store_true', help = 'distribute the jobs over available nodes')
-		parser.add_argument('-l', '--list', dest = 'actions', action = 'append_const', const = self.list_jobs, help = 'show a list of added jobs')
-		parser.add_argument('-p', '--prepare', dest = 'actions', action = 'append_const', const = self.prepare, help = 'prepare all the jobs')
-		parser.add_argument('-c', '--calc', dest = 'actions', action = 'append_const', const = self.start, help = 'start calculating one jobs, or see -z/-w/-q')
-		#parser.add_argument('-b', '--keepcalc', dest = 'actions', action = 'append_const', const = None, help = 'like -c, but keeps checking and filling')
-		# parser.add_argument('-z', '--all', dest = 'all', action = 'store_true', help = '-c will start all jobs')
-		parser.add_argument('-w', '--weight', dest = 'weight', action = 'store', type = int, default = None, help = '-c will start jobs with total WEIGHT running')
-		parser.add_argument('-q', '--limit', dest = 'limit', action = 'store', type = int, default = None, help = '-c will add jobs until a total LIMIT running')
-		parser.add_argument('-k', '--kill', dest = 'actions', action = 'append_const', const = self.kill, help = 'terminate the calculation of all the running jobs')
-		parser.add_argument('-r', '--remove', dest = 'actions', action = 'append_const', const = self.cleanup, help = 'clean up all the job files')
-		parser.add_argument('-g', '--fix', dest = 'actions', action = 'append_const', const = self.fix, help = 'fix jobs, check cache etc (e.g. after update)')
-		parser.add_argument('-s', '--status', dest = 'actions', action = 'append_const', const = self.status, help = 'show job status')
-		parser.add_argument('-m', '--monitor', dest = 'actions', action = 'append_const', const = self.continuous_status, help = 'show job status every few seconds')
-		parser.add_argument('-x', '--result', dest = 'actions', action = 'append_const', const = summary, help = 'run analysis code to summarize results')
-		parser.add_argument('-t', '--whyfail', dest = 'actions', action = 'append_const', const = self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
-		parser.add_argument('-j', '--serial', dest = 'parallel', action = 'store_false', help = 'job commands (start, fix, etc) may NOT be run in parallel (parallel is faster but order of jobs and output is inconsistent)')
-		parser.add_argument('--jobs', dest='jobs', action = 'store', type=str, help = 'specify by name the jobs to (re)start, separated by whitespace')
+		def summary(queue = self, *args, **kwargs): return self.summary(queue)
+		def wrap_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd)
+		parser=ArgumentParser(description='distribute jobs over available nodes',
+		    epilog='actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
+		parser.add_argument('-v', '--verbose', dest='verbosity', action='count', default=0, help='more information (can be used multiple times, -vv)')
+		parser.add_argument('-f', '--force', dest='force', action='store_true', help='force certain mistake-sensitive steps instead of failing with a warning')
+		parser.add_argument('-e', '--restart', dest='restart', action='store_true', help='with this, start and cleanup ignore complete (/running) jobs')
+		parser.add_argument('-a', '--availability', dest='availability', action='store_true', help='list all available nodes and their load (cache reload)')
+		parser.add_argument('-d', '--distribute', dest='distribute', action='store_true', help='distribute the jobs over available nodes')
+		parser.add_argument('-l', '--list', dest='actions', action='append_const', const=self.list_jobs, help='show a list of added jobs')
+		parser.add_argument('-p', '--prepare', dest='actions', action='append_const', const=self.prepare, help='prepare all the jobs')
+		parser.add_argument('-c', '--calc', dest='actions', action='append_const', const=self.start, help='start calculating one jobs, or see -z/-w/-q')
+		#parser.add_argument('-b', '--keepcalc', dest='actions', action='append_const', const=None, help='like -c, but keeps checking and filling')
+		# parser.add_argument('-z', '--all', dest='all', action='store_true', help='-c will start all jobs')
+		parser.add_argument('-w', '--weight', dest='weight', action='store', type=int, default=None, help='-c will start jobs with total WEIGHT running')
+		parser.add_argument('-q', '--limit', dest='limit', action='store', type=int, default=None, help='-c will add jobs until a total LIMIT running')
+		parser.add_argument('-k', '--kill', dest='actions', action='append_const', const=self.kill, help='terminate the calculation of all the running jobs')
+		parser.add_argument('-r', '--remove', dest='actions', action='append_const', const=self.cleanup, help='clean up all the job files')
+		parser.add_argument('-g', '--fix', dest='actions', action='append_const', const=self.fix, help='fix jobs, check cache etc (e.g. after update)')
+		parser.add_argument('-s', '--status', dest='actions', action='append_const', const=self.status, help='show job status')
+		parser.add_argument('-m', '--monitor', dest='actions', action='append_const', const=self.continuous_status, help='show job status every few seconds')
+		parser.add_argument('-x', '--result', dest='actions', action='append_const', const=summary, help='run analysis code to summarize results')
+		parser.add_argument('-t', '--whyfail', dest='actions', action='append_const', const=self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
+		parser.add_argument('-j', '--serial', dest='parallel', action='store_false', help='job commands (start, fix, etc) may NOT be run in parallel (parallel is faster but order of jobs and output is inconsistent)')
+		parser.add_argument('--jobs', dest='jobs', action='store', type=str, help='specify by name the jobs to (re)start, separated by whitespace')
+		# parser.add_argument('--cmd', dest='cmd', nargs=1, action='store', type=str, help='run shell command in each of the job directories')
+		parser.add_argument('--cmd', dest='actions', nargs=1, action='append', type=wrap_cmd, help='run a shell command in the directories of each job that has a dir ($NAME/$BATCH/$STATUS if --s)')
 		# remaining letters: bjnu  [-i, -y and -o are available but have commmon meanings]
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
@@ -742,19 +764,23 @@ class Queue(object):
 				else:
 					self.jobs.remove(job)
 			if job_selection:
-				self._log('specifically requested job(s) [{0:s}] was/were not found'
-					.format(', '.join(job_selection)), level=1)
-				exit(1)
+				parser.error('Specifically requested job(s) [{0:s}] was/were not found.'
+					.format(', '.join(job_selection)))
 
-		actions = args.actions or []
+		actions = []
+		for act in args.actions:
+			if hasattr(act, '__iter__'):
+				actions.extend(act)
+			else:
+				actions.append(act)
+
 		self.show = args.verbosity + 1
 		self.force, self.restart, self.weight, self.limit = \
 			args.force, args.restart, args.weight, args.limit
 
 		if not actions and not any((args.availability, args.distribute, self.restart, self.weight, self.limit,)):
-			self._log('please provide some action')
 			parser.print_help()
-			return
+			parser.error('Please provide some action.')
 
 		if args.availability:
 			prev_show, self.show = self.show, 2
@@ -767,26 +793,23 @@ class Queue(object):
 
 		if self.restart:
 			if self.start not in actions and self.cleanup not in actions:
-				self._log('you requested that restart/cleanup apply only to failed jobs, but didn\'t specify a start or cleanup command [-c]')
-				return
+				parser.error('You requested that restart/cleanup apply only to failed jobs, '
+					'but didn\'t specify a start or cleanup command [-c].')
 
 		if self.start not in actions:
-			# if self.all:
-			# 	self._log('you requested that all jobs be started, but didn\'t specify a start command [-c]')
-			# 	return
 			if self.weight:
-				self._log('you specified a weight for jobs to be started, but didn\'t specify a start command [-c]')
-				return
+				parser.error('You specified a weight for jobs to be started, '
+					'but didn\'t specify a start command [-c].')
 			if self.limit:
-				self._log('you specified a weight for jobs to keep running, but didn\'t specify a start command [-c]')
-				return
+				parser.error('You specified a weight for jobs to keep running, '
+					'but didn\'t specify a start command [-c].')
 
 		self.parallel = args.parallel
 		if actions:
-			for action in args.actions:
+			for action in actions:
 				action(verbosity=args.verbosity, parallel=args.parallel, force=args.force)
 
-		return [str(action.__name__) for action in actions]
+		return [str(action) for action in actions]
 
 
 def _start_job_on_node(info, **kwargs):
