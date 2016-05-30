@@ -2,7 +2,7 @@
 """
 	Queue using qsub to start jobs.
 """
-
+from distutils.spawn import find_executable
 from logging import warning
 from os import popen, environ
 from os.path import join
@@ -18,13 +18,14 @@ class SlurmQueue(Queue):
 		self.partition = partition or 'thchem'
 		super(SlurmQueue, self).__init__(jobs=jobs, summary_func=summary_func)
 		self.time_limit = '03-00:00:00'
-		partition_info = run_cmds(['sinfo -l --partition {0:s}'.format(self.partition)], queue=self)
-		if partition_info:
-			partition_lines = partition_info[0].splitlines()[2:]
-			if partition_lines:
-				time = partition_lines[0].split()[2]
-				if findall(r'^[-\d]*\d+:\d+:\d+$', time):
-					self.time_limit = time
+		if find_executable('sinfo'):
+			partition_info = run_cmds(['sinfo -l --partition {0:s}'.format(self.partition)], queue=self)
+			if partition_info:
+				partition_lines = partition_info[0].splitlines()[2:]
+				if partition_lines:
+					time = partition_lines[0].split()[2]
+					if findall(r'^[-\d]*\d+:\d+:\d+$', time):
+						self.time_limit = time
 
 	def all_nodes(self):
 		"""
@@ -49,7 +50,7 @@ class SlurmQueue(Queue):
 
 	@lru_cache(10)
 	def test_slurm(self):
-		if run_cmds(['sinfo -l'], queue=self) is None:
+		if not find_executable('sinfo'):
 			self._log('slurm does not work on this machine; run this code from a node that has access to the queue')
 			exit()
 
