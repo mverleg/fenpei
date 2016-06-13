@@ -12,7 +12,7 @@
 from logging import warning
 from subprocess import PIPE
 from subprocess import Popen
-from sys import stdout
+from sys import stdout, stderr
 from time import time, sleep
 from random import sample
 from bardeen.inout import reprint
@@ -766,6 +766,11 @@ class Queue(object):
 			if job_selection:
 				parser.error('Specifically requested job(s) [{0:s}] was/were not found.'
 					.format(', '.join(job_selection)))
+
+		if not args.actions:
+			stderr.write('No action selected. Use one or several flags to control actions.\n\n')
+			parser.print_help()
+			exit()
 
 		actions = []
 		for act in args.actions:
