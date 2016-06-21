@@ -6,6 +6,8 @@
 Welcome to fenpei's documentation!
 ==================================
 
+**Warning**: this is very outdated and incomplete.
+
 *fenpei* is a python module that helps to distribute, monitor and control jobs for multiple machines, e.g. through ssh. It's primary application is to distribute batches of scientific calculations over available cluster nodes.
 
 Contents:
@@ -16,7 +18,7 @@ Contents:
 	jobs
 	queues
 	demo
-	
+
 
 Indices and tables
 ==================
