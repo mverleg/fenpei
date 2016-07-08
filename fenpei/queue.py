@@ -559,12 +559,13 @@ class Queue(object):
 		"""
 		self._log('status for %d jobs:' % len(self.jobs), level = 1)
 		for status_nr in status_list.keys():
-			job_names = ' '.join(str(job) for job in status_list[status_nr])
 			if verbosity <= 0:
+				job_names = ' '.join(str(job) for job in status_list[status_nr][:20 ])
 				job_names = job_names if len(job_names) <= 40 else job_names[:37] + '...'
 				self._log(' {0:3d} {1:12s} {2:s}'.format(
 					len(status_list[status_nr]), Job.status_names[status_nr], job_names))
 			else:
+				job_names = ' '.join(str(job) for job in status_list[status_nr])
 				weight = sum(job.weight for job in self.get_status()[status_nr])
 				stat_wght = '{1:s} ({0:d})'.format(weight, Job.status_names[status_nr])
 				self._log(' {0:3d} {2:18s} {1:s}'.format(
@@ -727,7 +728,7 @@ class Queue(object):
 		def summary(queue = self, *args, **kwargs): return self.summary(queue)
 		def wrap_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd)
 		parser=ArgumentParser(description='distribute jobs over available nodes',
-		    epilog='actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
+			epilog='actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest='verbosity', action='count', default=0, help='more information (can be used multiple times, -vv)')
 		parser.add_argument('-f', '--force', dest='force', action='store_true', help='force certain mistake-sensitive steps instead of failing with a warning')
 		parser.add_argument('-e', '--restart', dest='restart', action='store_true', help='with this, start and cleanup ignore complete (/running) jobs')
