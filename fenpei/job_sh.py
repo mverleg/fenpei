@@ -13,7 +13,7 @@
 from socket import gethostname
 from collections import Mapping
 from os import listdir, symlink
-from os.path import join, basename, isdir, isfile, dirname, exists
+from os.path import join, basename, isdir, isfile, dirname, exists, islink
 from shutil import copyfile
 from bardeen.system import mkdirp
 from fenpei.job import Job
@@ -133,7 +133,7 @@ class ShJob(Job):
 			See if prepared by checking the existence of every file.
 		"""
 		for filedir, filename in self.files.keys():
-			if not isfile(join(self.directory, filename)):
+			if not isfile(join(self.directory, filename)) and not islink(join(self.directory,filename)):
 				self._log('%s is not prepared because %s (and possibly more) are missing' % (self.name, filename), 3)
 				return False
 		if not isfile(join(self.directory, self.run_file())):
