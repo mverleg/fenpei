@@ -145,7 +145,7 @@ class ShJobSingle(ShJob):
 		for name in self.parameter_names:
 			store[name] = self.substitutions[name]
 		with open(self.parameter_file_path, 'w+') as fh:
-			dump(obj=store, fp=fh)
+			dump(obj=store, fp=fh, indent=0)
 
 	def check_config(self):
 		if not self.is_prepared():
