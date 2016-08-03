@@ -711,7 +711,7 @@ class Queue(object):
 		for job in self.jobs:
 			if job.is_prepared():
 				self._log('running command for {0:s}'.format(job.name), level=2)
-				scmd = 'cd "{dir:s}"; export NAME="{name:s}" BATCH="{batch:s}" STATUS="{status:s}"; {cmd:s}'.format(
+				scmd = 'cd \'{dir:s}\'; export NAME=\'{name:s}\' BATCH=\'{batch:s}\' STATUS=\'{status:s}\'; {cmd:s}'.format(
 					dir=job.directory, name=job.name, batch=job.batch_name,
 					status=job.status_names[job.status], cmd=cmd
 				)
