@@ -29,7 +29,7 @@ class SlurmQueue(Queue):
 
 	def all_nodes(self):
 		"""
-			Specific nodes are irrelevant; everything in main queue.
+		Specific nodes are irrelevant; everything in main queue.
 		"""
 		if not super(SlurmQueue, self).all_nodes():
 			return False
@@ -42,7 +42,7 @@ class SlurmQueue(Queue):
 
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
-			Let slurm do the distributing by placing everything in general queue.
+		Let slurm do the distributing by placing everything in general queue.
 		"""
 		self._log('call to distribute for %d jobs ignored; slurm will do distribution' % len(jobs))
 		self.all_nodes()
@@ -56,7 +56,7 @@ class SlurmQueue(Queue):
 
 	def get_slurm_stat(self):
 		"""
-			Get slurm status for current user as a dictionary of properties.
+		Get slurm status for current user as a dictionary of properties.
 		"""
 		with popen('squeue --partition {0:s} --user $USER --format \'%A %B %P %T %u %j\''.format(self.partition)) as fh:
 			txt = fh.read()
@@ -80,7 +80,7 @@ class SlurmQueue(Queue):
 	@lru_cache(maxsize=100, timeout=2.5)
 	def processes(self, node):
 		"""
-			Get process info from qstat.
+		Get process info from qstat.
 		"""
 		self.test_slurm()
 		self._log('loading processes for %s' % node, level = 3)
@@ -88,13 +88,13 @@ class SlurmQueue(Queue):
 
 	def stop_job(self, node, pid):
 		"""
-			Remove individual job from queue.
+		Remove individual job from queue.
 		"""
 		run_cmds(['scancel {0:d}'.format(pid)], queue=self)
 
 	def run_cmd(self, job, cmd):
 		"""
-			Start an individual job by means of queueing a shell command.
+		Start an individual job by means of queueing a shell command.
 		"""
 		self.test_slurm()
 		assert job.directory
@@ -111,12 +111,12 @@ class SlurmQueue(Queue):
 		core_flags = (
 			'sbatch',
 			'--job-name', '"{0:s}"'.format(job.name),
-			'--comment', '"{0:s}/{1:s} (weight {2:d})"'.format(job.batch_name, job.name, job.weight),
+			'--comment', '"batch: {0:s}; job: {1:s}; weight: {2:d}"'.format(job.batch_name, job.name, job.weight),
 			'--partition', str(self.partition),
 			'--workdir', '"{0:s}"'.format(job.directory),
 			'--time', self.time_limit,
 			'--mem', '{0:d}G'.format(job.weight),
-			'--nodes', '1',
+			'--nodes', str(job.weight),
 			'--ntasks', '{0:d}'.format(job.weight),  # cores
 			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.all')),
