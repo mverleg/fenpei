@@ -22,13 +22,13 @@ class ShJobSingle(ShJob):
 	def __init__(self, name, subs, sub_files=(), nosub_files=(), weight=1, batch_name=None,
 			defaults_version=1, new_format=False, skip_checks=False, use_symlink=True, force_node=None):
 		"""
-			Similar to ShJob.
+		Similar to ShJob.
 
-			:param subs: a dictionary of substitutions (not specific to files, contrary to ShJob).
-			:param files: files to which substitutions should be applied.
-			:param nosub_files: files as-is (no substitutions).
-			:param defaults_version: which version of defaults? (Exists to keep old jobs working).
-			:param new_format: use .format instead of % (python 3 style instead of 2).
+		:param subs: a dictionary of substitutions (not specific to files, contrary to ShJob).
+		:param files: files to which substitutions should be applied.
+		:param nosub_files: files as-is (no substitutions).
+		:param defaults_version: which version of defaults? (Exists to keep old jobs working).
+		:param new_format: use .format instead of % (python 3 style instead of 2).
 		"""
 		""" Defaults for substitutions. """
 		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
@@ -76,28 +76,28 @@ class ShJobSingle(ShJob):
 	@classmethod
 	def get_default_subs(cls, version = 1):
 		"""
-			:return: default values for substitutions
+		:return: default values for substitutions
 		"""
 		return OrderedDict()
 
 	@classmethod
 	def get_files(cls):
 		"""
-			(used by ShJob; make sure jobs are not added twice)
+		(used by ShJob; make sure jobs are not added twice)
 		"""
 		return []
 
 	@classmethod
 	def get_sub_files(cls):
 		"""
-			:return: list of files with substitutions
+		:return: list of files with substitutions
 		"""
 		return []
 
 	@classmethod
 	def get_nosub_files(cls):
 		"""
-			:return: list of files without substitutions
+		:return: list of files without substitutions
 		"""
 		return []
 
@@ -157,8 +157,10 @@ class ShJobSingle(ShJob):
 			raise AssertionError(('Job {0:} has no loadable stored parameters for consistency checking; ' +
 				'they can be created using -g [load error: {1:}]').format(self, err))
 		before, now = set(retrieved.keys()), set(self.parameter_names)
-		assert not (before - now), 'settings disappeared compared to when job was run: {0:} (-gf to reset this check)'.format(', '.join(before - now))
-		assert not (now - before), 'new settings appeared compared to when job was run: {0:} (-gf to reset this check)'.format(', '.join(now - before))
+		assert not (before - now), 'settings disappeared compared to when job was run: {0:} (-gf to reset this check)'\
+			.format(', '.join(before - now))
+		assert not (now - before), 'new settings appeared compared to when job was run: {0:} (-gf to reset this check)'\
+			.format(', '.join(now - before))
 		for name in self.parameter_names:
 			if not retrieved[name] == self.substitutions[name]:
 				raise AssertionError('parameter {0:} for job {1:} was initially an {2:} <{3:}> but is now {4:} <{5:}>'
