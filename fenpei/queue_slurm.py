@@ -119,7 +119,6 @@ class SlurmQueue(Queue):
 			'--ntasks', '1',  # different tasks can be on different nodes
 			'--cpus-per-task', str(job.weight),
 			'--nodes', '1',
-			'--ntasks', '{0:d}'.format(job.weight),  # cores
 			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 		)
