@@ -117,7 +117,7 @@ class SlurmQueue(Queue):
 			'--time', self.time_limit,
 			'--mem', '{0:d}G'.format(job.weight),
 			'--ntasks', '1',  # different tasks can be on different nodes
-			'--cpus-per-task', '1', #str(min(job.weight, 16)),
+			'--cpus-per-task', str(min(job.weight//4, 12)),
 			'--nodes', '1',
 			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.all')),
