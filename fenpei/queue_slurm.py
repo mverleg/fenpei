@@ -115,7 +115,7 @@ class SlurmQueue(Queue):
 			'--partition', str(self.partition),
 			'--workdir', '"{0:s}"'.format(job.directory),
 			'--time', self.time_limit,
-			'--mem', '{0:d}G'.format(job.weight),
+			'--mem', '{0:d}M'.format(100*job.weight),
 			'--ntasks', '1',  # different tasks can be on different nodes
 			'--cpus-per-task', '1', #str(min(job.weight, 16)),
 			'--nodes', '1',
