@@ -2,4 +2,6 @@
 An example of Fenpei is that state is derived, it intentionally is not a continuously running service.
 This way, it can simply resume after losing contact with client nodes or after a reboot.
 
+-q starts too few jobs (by weight instead of count?)
+
 
