@@ -252,8 +252,8 @@ class Job(object):
 					if skip_conflicts:
 						return False
 					raise AssertionError('you are trying to clean up a job that is running or completed; ' + \
-						'use -f to force this, or -e to skip these jobs (it could also mean that two jobs' + \
-						'are use the same name and batchname).')
+						'use -f to force this, or -e to skip these jobs (it could also mean that two ' + \
+						'jobs are use the same name and batchname).')
 		if isdir(self.directory):
 			rmtree(self.directory, ignore_errors = True)
 			self._log('cleaned up {0:s}'.format(self), level=2)
