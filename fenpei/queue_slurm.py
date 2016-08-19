@@ -17,7 +17,7 @@ class SlurmQueue(Queue):
 	def __init__(self, jobs=None, partition=None, summary_func=None):
 		self.partition = partition or 'thchem'
 		super(SlurmQueue, self).__init__(jobs=jobs, summary_func=summary_func)
-		self.time_limit = '03-00:00:00'
+		self.time_limit = '07-00:00:00'
 		if find_executable('sinfo'):
 			partition_info = run_cmds(['sinfo -l --partition {0:s}'.format(self.partition)], queue=self)
 			if partition_info:
