@@ -104,7 +104,7 @@ class SlurmQueue(Queue):
 				'--nodelist', str(job.force_node),
 				'--no-requeue',
 			)
-		if 'EXCLUDE_NODES' in environ:
+		if 'EXCLUDE_NODES' in environ and environ['EXCLUDE_NODES'].strip():
 			node_flags += (
 				'--exclude', str(environ['EXCLUDE_NODES']),
 			)
