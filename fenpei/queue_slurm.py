@@ -104,14 +104,15 @@ class SlurmQueue(Queue):
 				'--nodelist', str(job.force_node),
 				'--no-requeue',
 			)
+		comment = '"batch: {0:s}; job: {1:s}; weight: {2:d}"'.format(job.batch_name, job.name, job.weight),
 		if 'EXCLUDE_NODES' in environ and environ['EXCLUDE_NODES'].strip():
 			node_flags += (
 				'--exclude', str(environ['EXCLUDE_NODES']),
 			)
+			comment = '{0:s}; excl: {1:s}'.format(comment, environ['EXCLUDE_NODES'].strip())
 		core_flags = (
 			'sbatch',
 			'--job-name', '"{0:s}"'.format(job.name),
-			'--comment', '"batch: {0:s}; job: {1:s}; weight: {2:d}"'.format(job.batch_name, job.name, job.weight),
 			'--partition', str(self.partition),
 			'--workdir', '"{0:s}"'.format(job.directory),
 			'--time', self.time_limit,
@@ -122,6 +123,13 @@ class SlurmQueue(Queue):
 			'--output', '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 			'--error',  '"{0:s}"'.format(join(job.directory, 'slurm.all')),
 		)
+		if getattr(job, 'niceness', True):
+			nice = getattr(job, 'niceness', 100)
+			node_flags += (
+				'--nice', str(nice),  # otherwise other people can't run
+			)
+			comment = '{0:s}; nice: {1:s}'.format(comment, 'on' if nice is True else str(nice))
+		core_flags += ('--comment', comment,)
 		subcmd = ' '.join(core_flags + node_flags + ('\'{0:s}\''.format(cmd),))
 		cdcmd = 'cd "{0:s}"'.format(job.directory)
 		outp = run_cmds((cdcmd, subcmd,), queue=self)
