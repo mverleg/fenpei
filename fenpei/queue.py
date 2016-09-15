@@ -711,7 +711,7 @@ class Queue(object):
 		for job in self.jobs:
 			if job.is_prepared():
 				self._log('running command for {0:s}'.format(job.name), level=2)
-				scmd = 'cd \'{dir:s}\'; export NAME=\'{name:s}\' BATCH=\'{batch:s}\' STATUS=\'{status:s}\'; {cmd:s}'.format(
+				scmd = 'cd \'{dir:s}\'; bash -c \'export NAME=\'"\'"\'{name:s}\'"\'"\' BATCH=\'"\'"\'{batch:s}\'"\'"\' STATUS=\'"\'"\'{status:s}\'"\'"\'; {cmd:s}\''.format(
 					dir=job.directory, name=job.name, batch=job.batch_name,
 					status=job.status_names[job.status], cmd=cmd
 				)
@@ -723,7 +723,7 @@ class Queue(object):
 
 	def run_argv(self):
 		"""
-			Analyze sys.argv and run commands based on it.
+		Analyze sys.argv and run commands based on it.
 		"""
 		def summary(queue = self, *args, **kwargs): return self.summary(queue)
 		def wrap_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd)
