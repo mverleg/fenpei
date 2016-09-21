@@ -20,7 +20,9 @@ from fenpei.job import Job
 from fenpei.shell import run_shell
 from datetime import datetime
 from time import time
-from shell import git_current_hash
+
+from fenpei.utils import substitute, FormattingException
+from .shell import git_current_hash
 
 
 def extend_substitutions(subst, name, batch, directory, git_hash=None):
@@ -42,20 +44,20 @@ def extend_substitutions(subst, name, batch, directory, git_hash=None):
 
 class ShJob(Job):
 
-	def __init__(self, name, substitutions, weight=1, batch_name=None, new_format=False, use_symlink=True, force_node=None):
+	def __init__(self, name, substitutions, weight=1, batch_name=None, formatter='jinja2', use_symlink=True, force_node=None):
 		"""
-			Create a executable or shell job object, provided a number of files or directories which will be copied,
-			and (optionally) substitutions for each of them.
+		Create a executable or shell job object, provided a number of files or directories which will be copied,
+		and (optionally) substitutions for each of them.
 
-			:param substitutions: a dictionary; keys are files or directories to be copied, values are dicts of
-			substitutions, or None; e.g. {'run.sh': {'R': 15, 'method': 'ccsd(t)'}} will copy
-			:raise ShJob.FileNotFound: subclass of OSError, indicating the files argument contains data that is invalid
+		:param substitutions: a dictionary; keys are files or directories to be copied, values are dicts of
+		substitutions, or None; e.g. {'run.sh': {'R': 15, 'method': 'ccsd(t)'}} will copy
+		:raise ShJob.FileNotFound: subclass of OSError, indicating the files argument contains data that is invalid
 
-			For other parameters, see :ref: Job.
+		For other parameters, see :ref: Job.
 
-			Files will be copied if bool(files) is True (for substitutions), otherwise it will be attempted to
-			hard-link them (use True to prevent that with no substitutions); if you use a directory, /path/ copies
-			files from it and /path copies the directory with files; directory substitutions apply to contained files.
+		Files will be copied if bool(files) is True (for substitutions), otherwise it will be attempted to
+		hard-link them (use True to prevent that with no substitutions); if you use a directory, /path/ copies
+		files from it and /path copies the directory with files; directory substitutions apply to contained files.
 		"""
 		assert ' ' not in self.run_file(), 'there should be no whitespace in run file'
 		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name, force_node=force_node)
@@ -64,47 +66,47 @@ class ShJob(Job):
 			extend_substitutions(subst, name, batch_name, self.directory, git_hash=git_commit)
 		self.files = {filepath: None for filepath in self.get_files()}
 		self.files.update(substitutions)
-		self.new_format = new_format
+		self.formatter = formatter
 		self.use_symlink = use_symlink
 		self.files = self._fix_files(self.files)
 
 	@classmethod
 	def get_files(cls):
 		"""
-			:return: the list of files and directories used by this code, which will be linked or copied
+		:return: the list of files and directories used by this code, which will be linked or copied
 
-			Substitutions for non-static files should be supplied to the constructor.
+		Substitutions for non-static files should be supplied to the constructor.
 		"""
 		raise NotImplementedError()
 
 	@classmethod
 	def run_file(cls):
 		"""
-			:return: the path to the file which executes the job; should be in get_files()
+		:return: the path to the file which executes the job; should be in get_files()
 
-			Files can be either string paths or tuples of (directory, pathname); in the later case pathname will be
-			copied (including directories), instead of assuming only the file is to be copied.
+		Files can be either string paths or tuples of (directory, pathname); in the later case pathname will be
+		copied (including directories), instead of assuming only the file is to be copied.
 		"""
 		raise NotImplementedError()
 
 	class FileNotFound(OSError):
 		"""
-			File was not found exception.
+		File was not found exception.
 		"""
 
 	def _fix_files(self, files):
 		"""
-			Check that self.files is filled with valid values (files exist etc).
+		Check that self.files is filled with valid values (files exist etc).
 
-			Turns all string filepaths into tuples of directory and filename.
+		Turns all string filepaths into tuples of directory and filename.
 
-			Expands all directories into lists of files.
+		Expands all directories into lists of files.
 
-			:raise ShJob.FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
+		:raise ShJob.FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
 		"""
 		def expand_dir(pre_path, post_path):
 			"""
-				Expand a tuple (predir, postdir) into all the files in that directory.
+			Expand a tuple (predir, postdir) into all the files in that directory.
 			"""
 			fullpath = join(pre_path, post_path)
 			subs = []
@@ -130,7 +132,7 @@ class ShJob(Job):
 
 	def is_prepared(self):
 		"""
-			See if prepared by checking the existence of every file.
+		See if prepared by checking the existence of every file.
 		"""
 		for filedir, filename in self.files.keys():
 			if not isfile(join(self.directory, filename)) and not islink(join(self.directory,filename)):
@@ -142,7 +144,7 @@ class ShJob(Job):
 
 	def prepare(self, *args, **kwargs):
 		"""
-			Prepares the job for execution by copying or linking all the files, and substituting values where applicable.
+		Prepares the job for execution by copying or linking all the files, and substituting values where applicable.
 		"""
 		#self._fix_files()  # todo: this shouldn't be necessary, but leaving a note just in case it causes problems
 		super(ShJob, self).prepare(*args, **kwargs)
@@ -159,29 +161,25 @@ class ShJob(Job):
 				if isinstance(subst, Mapping):
 					with open(filepath, 'r') as fhr:
 						with open(join(self.directory, filename), 'w+') as fhw:
-							""" Split into lines for better error messages. """
-							for nr, line in enumerate(fhr.readlines()):
-								try:
-									if self.new_format:
-										fhw.write(line.format(**subst))
-									else:
-										fhw.write((line % subst))
-								except KeyError as err:
-									self._log('missing key "%s" in substitution of "%s" on line %d; job not prepared' % (str(err).strip('\''), filename, nr + 1))
-									self.cleanup()
-									return False
-								except ValueError as err:
-									self._log('substitution of "%s" on line %d encountered a formatting error; job not prepared' % (filename, nr + 1))
-									self._log(u'\t' + str(err))
-									self.cleanup()
-									return False
+							inp = fhr.read()
+							try:
+								if hasattr(self.formatter, '__call__'):
+									# noinspection PyCallingNonCallable
+									outp = self.formatter(inp, subst, job=self, filename=filepath)
+								else:
+									outp = substitute(inp, subst, formatter=self.formatter, job=self, filename=filepath)
+								fhw.write(outp)
+							except FormattingException as err:
+								self._log('{0:}'.format(err))
+								self.cleanup()
+								return False
 				else:
 					if self.use_symlink:
 						symlink(filepath, join(self.directory, filename))
 					else:
 						copyfile(filepath, join(self.directory, filename))
 			else:
-				""" hard-link files (directories recursively) if possible """
+				""" Soft-link files if possible and allowed by settings """
 				if self.use_symlink:
 					symlink(filepath, join(self.directory, filename))
 				else:
@@ -195,7 +193,7 @@ class ShJob(Job):
 
 	def start(self, node, *args, **kwargs):
 		"""
-			Start the job and store node/pid.
+		Start the job and store node/pid.
 		"""
 		self._start_pre(*args, **kwargs)
 		""" nohup, bg and std redirect should be handeled by queue """

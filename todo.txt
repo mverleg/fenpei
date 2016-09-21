@@ -4,4 +4,6 @@ This way, it can simply resume after losing contact with client nodes or after a
 
 -q starts too few jobs (by weight instead of count?)
 
+Use a template langauge for substitution files, rather than just Python substitutions
+
 

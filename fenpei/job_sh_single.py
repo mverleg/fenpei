@@ -20,7 +20,7 @@ from fenpei.shell import run_cmds
 class ShJobSingle(ShJob):
 
 	def __init__(self, name, subs, sub_files=(), nosub_files=(), weight=1, batch_name=None,
-			defaults_version=1, new_format=False, skip_checks=False, use_symlink=True, force_node=None):
+			defaults_version=1, formatter='jinja2', skip_checks=False, use_symlink=True, force_node=None):
 		"""
 		Similar to ShJob.
 
@@ -28,7 +28,7 @@ class ShJobSingle(ShJob):
 		:param files: files to which substitutions should be applied.
 		:param nosub_files: files as-is (no substitutions).
 		:param defaults_version: which version of defaults? (Exists to keep old jobs working).
-		:param new_format: use .format instead of % (python 3 style instead of 2).
+		:param formatter: which formatter to use for files (%, .format, jinja, ..; see `utils.py`).
 		"""
 		""" Defaults for substitutions. """
 		subs_with_defaults = copy(self.get_default_subs(version = defaults_version))
@@ -47,7 +47,7 @@ class ShJobSingle(ShJob):
 		""" Override the whole ShJob init because it's very inefficient if all substitutions are the same """
 		""" This skips one inheritance level! """
 		super(ShJob, self).__init__(name=name, weight=weight, batch_name=batch_name, force_node=force_node)
-		self.new_format = new_format
+		self.formatter = formatter
 		self.use_symlink = use_symlink
 		extend_substitutions(self.substitutions, name, batch_name, self.directory)
 		if not hasattr(self.__class__, '_FIXED_CACHE'):

@@ -25,7 +25,7 @@ from math import ceil
 from functools import partial
 from .shell import run_cmds_on, run_cmds
 from .job import Job
-from .conf import get_pool_light, TMP_DIR, thread_map
+from .utils import get_pool_light, TMP_DIR, thread_map
 
 
 def job_task_run(job, method, **kwargs):

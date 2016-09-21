@@ -12,7 +12,7 @@
 from os.path import join, exists, split
 from bardeen.system import mkdirp, link_else_copy
 from fenpei.job import Job
-from .conf import CALC_DIR
+from .utils import CALC_DIR
 
 
 class PyJob(Job):
