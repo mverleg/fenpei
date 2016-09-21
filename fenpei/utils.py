@@ -4,7 +4,6 @@ from multiprocessing import Pool, cpu_count
 from tempfile import gettempdir
 #from threading import Thread
 from warnings import warn
-
 from bardeen.system import mkdirp
 from os import environ, chmod
 from os.path import join, expanduser
@@ -133,10 +132,18 @@ def substitute_jinja2(text, substitutions, job=None, filename=None):
 	:param substitutions: Also called 'context', contains a mapping of things to replace.
 	:return: Substituted string.
 	"""
-	raise NotImplementedError('jinja2 todo')
-	outp = []
-	for nr, line in enumerate(text.splitlines()):
-		outp.append(line.format(**substitutions))
-	return '\n'.join(outp)
+	try:
+		from jinja2 import Template, __version__ as jinja_version
+	except ImportError as err:
+		raise ImportError('Jinja2 is set as the formatter, but '.format(err))
+	if int(jinja_version.split('.')[1]) < 7:
+		raise ImportError('Jinja2 needs at least version 2.7, but you have {0:s}'.format(jinja_version))
+	from jinja2 import TemplateSyntaxError
+	
+	try:
+		template = Template(text)
+	except TemplateSyntaxError as err:
+		raise TemplateSyntaxError('In file {0:s}: {1:}'.format(filename, err), err.lineno)
+	return template.render(**substitutions)
 
 
