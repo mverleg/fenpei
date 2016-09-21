@@ -8,6 +8,7 @@ from bardeen.system import mkdirp
 from os import environ, chmod
 from os.path import join, expanduser
 
+from jinja2 import StrictUndefined
 
 if 'CALC_DIR' in environ:
 	CALC_DIR = environ['CALC_DIR']
@@ -141,7 +142,7 @@ def substitute_jinja2(text, substitutions, job=None, filename=None):
 	from jinja2 import TemplateSyntaxError
 	
 	try:
-		template = Template(text)
+		template = Template(text, undefined=StrictUndefined)
 	except TemplateSyntaxError as err:
 		raise TemplateSyntaxError('In file {0:s}: {1:}'.format(filename, err), err.lineno)
 	return template.render(**substitutions)
