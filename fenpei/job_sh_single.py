@@ -56,7 +56,7 @@ class ShJobSingle(ShJob):
 			files.update({filepath: True for filepath in self.get_sub_files() + list(sub_files)})
 			self.__class__._FIXED_CACHE = self._fix_files(files)
 		""" Now fill in the substitutions (in a copied version). """
-		self.files = {fileinfo: copy(self.substitutions) if subs is True else None for fileinfo, subs in self.__class__._FIXED_CACHE.items()}
+		self.files = {fileinfo: (copy(self.substitutions) if subs is True else None) for (fileinfo, subs) in self.__class__._FIXED_CACHE.items()}
 		self.parameter_file_path = join(self.directory, 'parameters.json')
 
 	def _calc_param_hash(self):

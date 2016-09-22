@@ -142,7 +142,7 @@ def substitute_jinja2(text, substitutions, job=None, filename=None):
 	from jinja2 import TemplateSyntaxError
 	
 	try:
-		template = Template(text, undefined=StrictUndefined)
+		template = Template(text, undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True)
 	except TemplateSyntaxError as err:
 		raise TemplateSyntaxError('In file {0:s}: {1:}'.format(filename, err), err.lineno)
 	return template.render(**substitutions)

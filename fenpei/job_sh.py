@@ -104,39 +104,42 @@ class ShJob(Job):
 
 		:raise ShJob.FileNotFound: subclass of OSError, indicating the one of the files doesn't exist
 		"""
-		def expand_dir(pre_path, post_path):
+		def expand_dir(pre_path, source_pth, target_pth):
 			"""
 			Expand a tuple (predir, postdir) into all the files in that directory.
 			"""
-			fullpath = join(pre_path, post_path)
+			fullpath = join(pre_path, source_pth)
 			subs = []
 			if isdir(fullpath):
 				for subpath in listdir(fullpath):
-					subs.extend(expand_dir(pre_path = pre_path,
-						post_path = join(fullpath, subpath).lstrip(pre_path)))
+					subs.extend(expand_dir(pre_path=pre_path,
+						source_pth= join(fullpath, subpath).lstrip(pre_path),
+						target_pth=target_pth))
 				return subs
 			else:
-				return [(pre_path, post_path)]
+				return [(pre_path, source_pth, target_pth)]
 
 		newfiles = {}
 		for filepath, subst in files.items():
 			if not isinstance(filepath, tuple) and not isinstance(filepath, list):
 				""" change string path into tuple """
-				filepath = dirname(filepath), basename(filepath)
-			for path_pair in expand_dir(*filepath):
+				filepath = dirname(filepath), basename(filepath), basename(filepath)
+			if len(filepath) == 2:
+				filepath = filepath[0], filepath[1], filepath[1]
+			for pth_triple in expand_dir(*filepath):
 				""" recursively expand a directory into all it's files """
-				newfiles[path_pair] = subst
-			if not exists(join(*filepath)):
-				raise self.FileNotFound('"%s" is not a valid file or directory' % join(*filepath))
+				newfiles[pth_triple] = subst
+			if not exists(join(*filepath[:2])):
+				raise self.FileNotFound('"%s" is not a valid file or directory' % join(*filepath[:2]))
 		return newfiles
 
 	def is_prepared(self):
 		"""
 		See if prepared by checking the existence of every file.
 		"""
-		for filedir, filename in self.files.keys():
-			if not isfile(join(self.directory, filename)) and not islink(join(self.directory,filename)):
-				self._log('%s is not prepared because %s (and possibly more) are missing' % (self.name, filename), 3)
+		for fromroot, frompth, topth in self.files.keys():
+			if not isfile(join(self.directory, topth)) and not islink(join(self.directory, topth)):
+				self._log('{0:s} is not prepared because {1:s} (and possibly more) are missing'.format(self.name, frompth), 3)
 				return False
 		if not isfile(join(self.directory, self.run_file())):
 			return False
@@ -150,24 +153,26 @@ class ShJob(Job):
 		super(ShJob, self).prepare(*args, **kwargs)
 		if self.is_prepared():
 			return False
-		for (filedir, filename), subst in self.files.items():
-			filepath = join(filedir, filename)
-			if exists(join(self.directory, filename)):
-				self._log('%s is not prepared but already has file %s' % (self.name, filepath), 2)
+		for (fromroot, frompth, topth), subst in self.files.items():
+			sourcefilepath = join(fromroot, frompth)
+			destfilepath = join(self.directory, topth)
+			if exists(destfilepath):
+				self._log('{0:s} is not prepared but already has file {1:s}'.format(self.name, destfilepath), 2)
 				break
-			mkdirp(join(self.directory, dirname(filename)))
+			mkdirp(join(self.directory, dirname(topth)))
+			# print('{0:s} ==> {1:s}'.format(sourcefilepath, destfilepath))
 			if subst:
 				""" copy files and possibly substitute """
 				if isinstance(subst, Mapping):
-					with open(filepath, 'r') as fhr:
-						with open(join(self.directory, filename), 'w+') as fhw:
+					with open(sourcefilepath, 'r') as fhr:
+						with open(destfilepath, 'w+') as fhw:
 							inp = fhr.read()
 							try:
 								if hasattr(self.formatter, '__call__'):
 									# noinspection PyCallingNonCallable
-									outp = self.formatter(inp, subst, job=self, filename=filepath)
+									outp = self.formatter(inp, subst, job=self, filename=sourcefilepath)
 								else:
-									outp = substitute(inp, subst, formatter=self.formatter, job=self, filename=filepath)
+									outp = substitute(inp, subst, formatter=self.formatter, job=self, filename=sourcefilepath)
 								fhw.write(outp)
 							except FormattingException as err:
 								self._log('{0:}'.format(err))
@@ -175,15 +180,15 @@ class ShJob(Job):
 								return False
 				else:
 					if self.use_symlink:
-						symlink(filepath, join(self.directory, filename))
+						symlink(sourcefilepath, destfilepath)
 					else:
-						copyfile(filepath, join(self.directory, filename))
+						copyfile(sourcefilepath, destfilepath)
 			else:
 				""" Soft-link files if possible and allowed by settings """
 				if self.use_symlink:
-					symlink(filepath, join(self.directory, filename))
+					symlink(sourcefilepath, destfilepath)
 				else:
-					copyfile(filepath, join(self.directory, filename))
+					copyfile(sourcefilepath, destfilepath)
 		if isfile(join(self.directory, self.run_file())):
 			run_shell(cmd = 'chmod ug+x "%s"' % join(self.directory, self.run_file()), wait = True)
 		else:
