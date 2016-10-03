@@ -4,6 +4,8 @@ Fenpei
 
 This little tool helps in scheduling, tracking and aggregating calculations and their results. It forms the step that brings you from 'a directory with working code for a job' to 'running dozens of jobs and getting results easily'.
 
+    pip install fenpei
+
 This is intended to be used to run multiple intensive computations on a (linux) cluster. At present, it assumes a shared file system on the cluster.
 
 It takes a bit of work to integrate with your situation but it is very flexible and should make your life easier after setting it up. Some features:
