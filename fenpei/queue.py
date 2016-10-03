@@ -1,12 +1,12 @@
 
 """
-	Distribute jobs over multiple machines by means of ssh.
+Distribute jobs over multiple machines by means of ssh.
 
-	- find quiet nodes
-	- start jobs if space
-	- weight jobs
-	- get status info
-	- restart failed
+- find quiet nodes
+- start jobs if space
+- weight jobs
+- get status info
+- restart failed
 """
 
 from logging import warning
@@ -30,14 +30,14 @@ from .utils import get_pool_light, TMP_DIR, thread_map
 
 def job_task_run(job, method, **kwargs):
 	"""
-		Runs an arbitrary method of job; used by job_task.
+	Runs an arbitrary method of job; used by job_task.
 	"""
 	return getattr(job, method)(**kwargs)
 
 
 def job_task(method, **kwargs):
 	"""
-		Returns a function that runs an arbitrary method of an object, for passing to Pool.map
+	Returns a function that runs an arbitrary method of an object, for passing to Pool.map
 	"""
 	return partial(job_task_run, method=method, **kwargs)
 
@@ -65,14 +65,14 @@ class Queue(object):
 
 	def _log(self, txt, level=1):
 		"""
-			Report to user.
+		Report to user.
 		"""
 		if level <= self.show:
-			print txt
+			print(txt)
 
 	def all_nodes(self):
 		"""
-			Get a list of all nodes (their ssh addresses).
+		Get a list of all nodes (their ssh addresses).
 		"""
 		if self.load_nodes():
 			return False
@@ -84,7 +84,7 @@ class Queue(object):
 
 	def node_availability(self):
 		"""
-			Check the processor use of all nodes.
+		Check the processor use of all nodes.
 		"""
 		if self.load_nodes():
 			return False
@@ -114,7 +114,7 @@ class Queue(object):
 
 	def save_nodes(self):
 		"""
-			Save the list of nodes to cache.
+		Save the list of nodes to cache.
 		"""
 		with open('%s/timestamp.nodes' % TMP_DIR, 'w+') as fh:
 			fh.write(str(time()))
@@ -126,7 +126,7 @@ class Queue(object):
 
 	def unsave_nodes(self):
 		"""
-			Remove cached node data.
+		Remove cached node data.
 		"""
 		try:
 			remove('%s/timestamp.nodes' % TMP_DIR)
@@ -138,7 +138,7 @@ class Queue(object):
 
 	def load_nodes(self, memory_time = 10 * 60):
 		"""
-			Load use restart (-e) to skip such jobs othe list of nodes from cache, if not expired.
+		Load use restart (-e) to skip such jobs othe list of nodes from cache, if not expired.
 		"""
 		try:
 			with open('%s/timestamp.nodes' % TMP_DIR, 'r') as fh:
@@ -160,11 +160,11 @@ class Queue(object):
 
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
-			Distribute jobs favourably by means of kind-of-Monte-Carlo (only favourable moves).
+		Distribute jobs favourably by means of kind-of-Monte-Carlo (only favourable moves).
 
-			:param jobs: (optional) the jobs to be distributed; uses self.jobs if not provided
-			:param max_reject_spree: (optional) stopping criterion; stop when this many unfavourable moves tried in a row
-			:return: distribution, a dictionary with node *indixes* as keys and lists of jobs on that node as values
+		:param jobs: (optional) the jobs to be distributed; uses self.jobs if not provided
+		:param max_reject_spree: (optional) stopping criterion; stop when this many unfavourable moves tried in a row
+		:return: distribution, a dictionary with node *indixes* as keys and lists of jobs on that node as values
 		"""
 		if not len(self.slots) > 0:
 			self.node_availability()
@@ -227,7 +227,7 @@ class Queue(object):
 
 	def text_distribution(self, distribution):
 		"""
-			Text visualisation of the distribution of jobs over nodes.
+		Text visualisation of the distribution of jobs over nodes.
 		"""
 		lines = []
 		no_job_nodes = []
@@ -263,7 +263,7 @@ class Queue(object):
 
 	def total_weight(self, jobs = None):
 		"""
-			Total weight of the provided jobs, or the added ones if None.
+		Total weight of the provided jobs, or the added ones if None.
 		"""
 		if jobs is None:
 			jobs = self.jobs
@@ -271,7 +271,7 @@ class Queue(object):
 
 	def processes(self, node):
 		"""
-			Get processes on specific node and cache them.
+		Get processes on specific node and cache them.
 		"""
 		if node in self.process_time.keys():
 			if time() - self.process_time[node] < 3:
@@ -301,7 +301,7 @@ class Queue(object):
 
 	def add_job(self, job):
 		"""
-			Add single job to the queue.
+		Add single job to the queue.
 		"""
 		assert isinstance(job, Job)
 		job.queue = self
@@ -310,7 +310,7 @@ class Queue(object):
 
 	def add_jobs(self, jobs):
 		"""
-			Add list of jobs to the queue.
+		Add list of jobs to the queue.
 		"""
 		for job in jobs:
 			self.add_job(job)
@@ -323,33 +323,33 @@ class Queue(object):
 	def list_jobs(self, cols=2, verbosity=0, *args, **kwargs):
 		N = int(ceil(len(self.jobs) / float(cols)))
 		for k in range(N):
-			print '  | '.join(
+			print('  | '.join(
 				'{0:2d}. {1:20s} {2:>10s}'.format(p + 1, '{0:s} [{1:d}]'.format(
 					join(self.jobs[p].batch_name, self.jobs[p].name) if verbosity else self.jobs[p].name,
 					self.jobs[p].weight
 				), self.jobs[p].status_str())
 					for p in [k, k+N, k+2*N] if p < len(self.jobs)
-			)
+			))
 
 	def run_job(self, job, filepath):
 		"""
-			Start an individual job, specified by a Python file.
+		Start an individual job, specified by a Python file.
 		"""
 		cmd = 'nohup python \'%s\' &> out.log &' % basename(filepath)
 		return self.run_cmd(job, cmd)
 
 	class CmdException(Exception):
 		"""
-			An external (e.g. Popen shell script) could not be run.
+		An external (e.g. Popen shell script) could not be run.
 		"""
 
 	def run_cmd(self, job, cmd):
 		"""
-			Start an individual job by means of a shell command.
+		Start an individual job by means of a shell command.
 
-			:param job: the job that's being started this way
-			:param cmd: shell commands to run (should include nohup and & as appropriate)
-			:return: process id (str)
+		:param job: the job that's being started this way
+		:param cmd: shell commands to run (should include nohup and & as appropriate)
+		:return: process id (str)
 		"""
 		assert job.directory
 		cmds = [
@@ -364,13 +364,13 @@ class Queue(object):
 
 	def stop_job(self, node, pid):
 		"""
-			Kill an individual job, specified by pid given during start ('pid' could also e.g. be a queue number).
+		Kill an individual job, specified by pid given during start ('pid' could also e.g. be a queue number).
 		"""
 		run_cmds_on(['kill %s' % pid], node = node, queue = self)
 
 	def prepare(self, parallel=None, *args, **kwargs):
 		"""
-			Prepare all the currently added jobs (make files etc).
+		Prepare all the currently added jobs (make files etc).
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
@@ -383,19 +383,19 @@ class Queue(object):
 
 	def running_count(self):
 		"""
-			How many running jobs.
+		How many running jobs.
 		"""
 		return len(self.get_status()[Job.RUNNING])
 
 	def running_weight(self):
 		"""
-			Total weight of running jobs.
+		Total weight of running jobs.
 		"""
 		return sum(job.weight for job in self.get_status()[Job.RUNNING])
 
 	def start(self, parallel=None, verbosity=0, *args, **kwargs):
 		"""
-			Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
+		Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
 		"""
 		self._quota_warning()
 		self._same_path_check(fail=True)
@@ -421,7 +421,7 @@ class Queue(object):
 
 	def start_weight(self, weight, parallel=None, *args, **kwargs):
 		"""
-			(Re)start jobs with an approximation of total weight.
+		(Re)start jobs with an approximation of total weight.
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		parallel = False  # override because it's slow in this case, somehow...
@@ -471,7 +471,7 @@ class Queue(object):
 
 	def get_jobs_by_weight(self, max_weight):
 		"""
-			Find jobs with an approximation of total weight.
+		Find jobs with an approximation of total weight.
 		"""
 		""" find eligible jobs (in specific order) """
 		job_status = self.get_status()
@@ -502,7 +502,7 @@ class Queue(object):
 
 	def fix(self, parallel=None, *args, **kwargs):
 		"""
-			Fix jobs, e.g. after fixes and updates.
+		Fix jobs, e.g. after fixes and updates.
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
@@ -514,7 +514,7 @@ class Queue(object):
 
 	def kill(self, *args, **kwargs):
 		"""
-			Kill all the currently added job processes.
+		Kill all the currently added job processes.
 		"""
 		kill_count = 0
 		for job in self.jobs:
@@ -523,7 +523,7 @@ class Queue(object):
 
 	def cleanup(self, parallel=None, *args, **kwargs):
 		"""
-			Clean up all the currently added jobs (remove files).
+		Clean up all the currently added jobs (remove files).
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
@@ -536,7 +536,7 @@ class Queue(object):
 
 	def get_status(self, parallel=None, **kwargs):
 		"""
-			Get list of statusses.
+		Get list of statusses.
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
@@ -555,7 +555,7 @@ class Queue(object):
 
 	def show_status(self, status_list, verbosity=0):
 		"""
-			Show list of statusses.
+		Show list of statusses.
 		"""
 		self._log('status for %d jobs:' % len(self.jobs), level = 1)
 		for status_nr in status_list.keys():
@@ -573,11 +573,11 @@ class Queue(object):
 
 	def continuous_status(self, delay=5, *args, **kwargs):
 		"""
-			Keep refreshing status until ctrl+C.
+		Keep refreshing status until ctrl+C.
 		"""
 		self._log('monitoring status; use cltr+C to terminate')
 		lines = len(Job.status_names) + 1
-		print '\n' * lines
+		print('\n' * lines)
 		nothing_running_count = 0
 		while True:
 			try:
@@ -607,14 +607,14 @@ class Queue(object):
 
 	def status(self, verbosity=0, *args, **kwargs):
 		"""
-			Get and show the status of jobs.
+		Get and show the status of jobs.
 		"""
 		status_list = self.get_status()
 		self.show_status(status_list, verbosity=verbosity)
 
 	def result(self, parallel=None, jobs=None, *args, **kwargs):
 		"""
-			:return: a dict of job results, with jobs as keys.
+		:return: a dict of job results, with jobs as keys.
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		# parallel = False  # override because parallel is much slower for some reason.
@@ -636,14 +636,14 @@ class Queue(object):
 
 	@staticmethod
 	def summary(queue):
-		print 'No summary function (queue "{0:s}"). Attach a static method .summary(queue) to the queue.'.format(queue.name)
+		print('No summary function (queue "{0:s}"). Attach a static method .summary(queue) to the queue.'.format(queue.name))
 
 	def compare_jobs(self, parameters, filter=None):
 		"""
-			Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
+		Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
 
-			:param filter: a function that returns True for jobs that should be included.
-			:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are parameter values for a single parameter, otherwise tuples.
+		:param filter: a function that returns True for jobs that should be included.
+		:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are parameter values for a single parameter, otherwise tuples.
 		"""
 		if not hasattr(parameters, '__iter__'):
 			parameters = (parameters,)
@@ -668,7 +668,7 @@ class Queue(object):
 
 	def compare_results(self, parameters, filter=None):
 		"""
-			Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
+		Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 		"""
 		""" param -> job """
 		jobmap = self.compare_jobs(parameters, filter=filter)
@@ -679,7 +679,7 @@ class Queue(object):
 
 	def get_crash_reason(self, parallel=None, verbosity=0):
 		"""
-			For each failed job, print why it failed.
+		For each failed job, print why it failed.
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		reasons = OrderedDict()

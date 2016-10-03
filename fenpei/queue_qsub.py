@@ -22,7 +22,7 @@ class QsubQueue(Queue):
 
 	def all_nodes(self):
 		"""
-			Specific nodes are irrelevant; everything in main queue.
+		Specific nodes are irrelevant; everything in main queue.
 		"""
 		self._log('no specific nodes; all to general queue', level=2)
 		if self.load_nodes():
@@ -36,7 +36,7 @@ class QsubQueue(Queue):
 
 	def distribute_jobs(self, jobs = None, max_reject_spree = None):
 		"""
-			Let qsub do the distributing by placing everything in general queue.
+		Let qsub do the distributing by placing everything in general queue.
 		"""
 		self._log('call to distribute for %d jobs ignored; qsub will do distribution' % len(jobs), level=2)
 		self.all_nodes()
@@ -50,9 +50,9 @@ class QsubQueue(Queue):
 
 	def _get_qstat(self):
 		"""
-			Get qstat for current user as a dictionary of properties.
+		Get qstat for current user as a dictionary of properties.
 
-			Based on http://stackoverflow.com/questions/26104116/qstat-and-long-job-names
+		Based on http://stackoverflow.com/questions/26104116/qstat-and-long-job-names
 		"""
 		f = popen('qstat -xml -r')
 		dom = parse(f)
@@ -84,22 +84,21 @@ class QsubQueue(Queue):
 	@lru_cache(maxsize=100, timeout=2.5)
 	def processes(self, node):
 		"""
-			Get process info from qstat.
+		Get process info from qstat.
 		"""
 		self._test_qstat()
 		self._log('loading processes for %s' % node, level = 3)
-		#todo: would this be appreciably faster with caching?
 		return self._get_qstat()
 
 	def stop_job(self, node, pid):
 		"""
-			Remove individual job from queue.
+		Remove individual job from queue.
 		"""
 		run_cmds(['qdel %s' % pid], queue = self)
 
 	def run_cmd(self, job, cmd):
 		"""
-			Start an individual job by means of queueing a shell command.
+		Start an individual job by means of queueing a shell command.
 		"""
 		self._test_qstat()
 		queue = self.qname
@@ -131,10 +130,5 @@ class QsubQueue(Queue):
 		if not qid:
 			raise self.CmdException('job %s id could not be found in "%s"' % (job, outp[1]))
 		return int(qid)
-
-#	def run_argv(self):
-#		parser = self._get_argparser()
-#		parser.add_argument('--max_qsub_jobs', dest = 'max_qsub_jobs', action = 'store', type = int, default = None, help = 'Limit the number of jobs by user allowed to be running on the queue.')
-#		super()
 
 

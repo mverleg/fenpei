@@ -1,7 +1,7 @@
 
 """
-	example test job
-	needs test/test_run.sh
+example test job
+needs test/test_run.sh
 """
 
 from os import getcwd
@@ -15,14 +15,14 @@ class TestJob(ShJobSingle):
 	@classmethod
 	def get_sub_files(cls):
 		"""
-			:return: list of files with substitutions
+		:return: list of files with substitutions
 		"""
 		return [(getcwd(), 'test_run.sh')]
 
 	@classmethod
 	def run_file(cls):
 		"""
-			:return: the path to the file which executes the job; should be in get_files()
+		:return: the path to the file which executes the job; should be in get_files()
 		"""
 		return 'test_run.sh'
 

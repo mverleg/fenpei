@@ -1,13 +1,13 @@
 
 """
-	Extended base class for fenpei job that runs through an executable (incl. shell script);
-	this should be considered abstract.
+Extended base class for fenpei job that runs through an executable (incl. shell script);
+this should be considered abstract.
 
-	As with :ref:Job, your custom job(s) should inherit from this job and extend the relevant methods.
-	Instead of :ref: prepare and :ref: start, you can override:
+As with :ref:Job, your custom job(s) should inherit from this job and extend the relevant methods.
+Instead of :ref: prepare and :ref: start, you can override:
 
-	* get_files
-	* run_file
+* get_files
+* run_file
 """
 
 from socket import gethostname
@@ -149,7 +149,6 @@ class ShJob(Job):
 		"""
 		Prepares the job for execution by copying or linking all the files, and substituting values where applicable.
 		"""
-		#self._fix_files()  # todo: this shouldn't be necessary, but leaving a note just in case it causes problems
 		super(ShJob, self).prepare(*args, **kwargs)
 		if self.is_prepared():
 			return False
@@ -160,7 +159,6 @@ class ShJob(Job):
 				self._log('{0:s} is not prepared but already has file {1:s}'.format(self.name, destfilepath), 2)
 				break
 			mkdirp(join(self.directory, dirname(topth)))
-			# print('{0:s} ==> {1:s}'.format(sourcefilepath, destfilepath))
 			if subst:
 				""" copy files and possibly substitute """
 				if isinstance(subst, Mapping):
@@ -206,4 +204,5 @@ class ShJob(Job):
 		pid = self.queue.run_cmd(job = self, cmd = cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
+
 

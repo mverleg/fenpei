@@ -1,8 +1,8 @@
 
 """
-	Like ShJob, but with one set of substitutions for all files (or None).
+Like ShJob, but with one set of substitutions for all files (or None).
 
-	Automatically adds all substitutions as attributes to the job.
+Automatically adds all substitutions as attributes to the job.
 """
 
 from base64 import urlsafe_b64encode

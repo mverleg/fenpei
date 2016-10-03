@@ -27,16 +27,16 @@ def run_shell(cmd, wait):
 
 def run_cmds_on(cmds, node, wait=True, queue=None):
 	"""
-		Run several commands on a local or remote machine.
+	Run several commands on a local or remote machine.
 
-		:param cmds: list of command lines, non Popen style words
-		:param node:
-		:param wait:
-		:param queue:
-		:return: list of stdout for each command if succesful, None otherwise
-		:raise: no exceptions; writes to sys.stderr for problems
+	:param cmds: list of command lines, non Popen style words
+	:param node:
+	:param wait:
+	:param queue:
+	:return: list of stdout for each command if succesful, None otherwise
+	:raise: no exceptions; writes to sys.stderr for problems
 
-		commands need to be merged because otherwise the state of cd is forgotten
+	commands need to be merged because otherwise the state of cd is forgotten
 	"""
 	split_str = '#%&split_here&%#'
 	cmds = [cmd.strip() for cmd in cmds]
@@ -74,4 +74,6 @@ def git_current_hash():
 
 
 if __name__ == '__main__':
-	print git_current_hash()
+	print(git_current_hash())
+
+

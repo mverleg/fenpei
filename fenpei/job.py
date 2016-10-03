@@ -1,17 +1,15 @@
 
 """
-	Base class for fenpei job; this should be considered abstract.
+Base class for fenpei job; this should be considered abstract.
 
-	Your custom job(s) should inherit from this job and extend the relevant methods, such as::
+Your custom job(s) should inherit from this job and extend the relevant methods, such as::
 
-	* is_prepared
-	* is_complete
-	* prepare
-	* start
-	* result
-	* summary
-
-	:: comment: make references
+* is_prepared
+* is_complete
+* prepare
+* start
+* result
+* summary
 """
 
 from re import match
@@ -38,12 +36,12 @@ class Job(object):
 
 	def __init__(self, name, weight=1, batch_name=None, force_node=None):
 		"""
-			Create a Job object.
+		Create a Job object.
 
-			:param name: unique name consisting of letters, numbers, dot (.) and underscore (_) **YOU need to make sure that name is unique (bijectively maps to job)**
-			:param weight: the relative resource use of this job (higher relative weights means fewer jobs will be scheduled together)
-			:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
-			:param force_node: demand a specific node; it's up to the queue whether this is honoured
+		:param name: unique name consisting of letters, numbers, dot (.) and underscore (_) **YOU need to make sure that name is unique (bijectively maps to job)**
+		:param weight: the relative resource use of this job (higher relative weights means fewer jobs will be scheduled together)
+		:param batch_name: optionally, a name of the same format as ``name``, which specifies the batch (will be grouped)
+		:param force_node: demand a specific node; it's up to the queue whether this is honoured
 		"""
 		assert match(r'^\w[/\w\.\+_-]*$', name), 'This is not a valid name: "{0:}"'.format(name)
 		assert weight > 0
@@ -68,8 +66,8 @@ class Job(object):
 
 	def _log(self, txt, *args, **kwargs):
 		"""
-			Logging function.
-			.queue is not always set, so have own logging function.
+		Logging function.
+		.queue is not always set, so have own logging function.
 		"""
 		if self.queue is None:
 			if len(txt.strip()):
@@ -81,7 +79,7 @@ class Job(object):
 
 	def save(self):
 		"""
-			Save information about a running job to locate the process.
+		Save information about a running job to locate the process.
 		"""
 		assert self.node is not None
 		assert self.pid is not None
@@ -91,7 +89,7 @@ class Job(object):
 
 	def unsave(self):
 		"""
-			Remove the stored process details.
+		Remove the stored process details.
 		"""
 		try:
 			remove('%s/node_pid.job' % self.directory)
@@ -101,7 +99,7 @@ class Job(object):
 
 	def load(self):
 		"""
-			Load process details from cache.
+		Load process details from cache.
 		"""
 		try:
 			with open('%s/node_pid.job' % self.directory, 'r') as fh:
@@ -140,17 +138,17 @@ class Job(object):
 
 	def is_complete(self):
 		"""
-			Check if job completed successfully.
+		Check if job completed successfully.
 
-			Needs to be extended by child class.
+		Needs to be extended by child class.
 
-			Only called for jobs that are at least prepared.
+		Only called for jobs that are at least prepared.
 		"""
 		return True
 
 	def find_status(self):
 		"""
-			Find status using is_* methods.
+		Find status using is_* methods.
 		"""
 		def check_status_indicators(self):
 			if self.is_prepared():
@@ -172,9 +170,9 @@ class Job(object):
 
 	def prepare(self, silent=False, *args, **kwargs):
 		"""
-			Prepares the job for execution.
+		Prepares the job for execution.
 
-			More steps are likely necessary for child classes.
+		More steps are likely necessary for child classes.
 		"""
 		self.status = self.PREPARED
 		if not self.is_prepared():
@@ -187,7 +185,7 @@ class Job(object):
 
 	def _start_pre(self, *args, **kwargs):
 		"""
-			Some checks at the beginning of .start().
+		Some checks at the beginning of .start().
 		"""
 		if self.is_running() or self.is_complete():
 			if not self.queue is None:
@@ -202,7 +200,7 @@ class Job(object):
 
 	def _start_post(self, node, pid, *args, **kwargs):
 		"""
-			Some bookkeeping at the end of .start().
+		Some bookkeeping at the end of .start().
 		"""
 		self.node = node
 		self.pid = pid
@@ -213,7 +211,7 @@ class Job(object):
 
 	def start(self, node, *args, **kwargs):
 		"""
-			Start the job and store node/pid.
+		Start the job and store node/pid.
 		"""
 		self._start_pre(*args, **kwargs)
 		"""
@@ -224,17 +222,17 @@ class Job(object):
 
 	def fix(self, *args, **kwargs):
 		"""
-			Some code that can be ran to fix jobs, e.g. after bugfixes or updates.
+		Some code that can be ran to fix jobs, e.g. after bugfixes or updates.
 
-			Needs to be implemented by children for the specific fix applicable (if just restarting is not viable).
+		Needs to be implemented by children for the specific fix applicable (if just restarting is not viable).
 		"""
 		return False
 
 	def kill(self, *args, **kwargs):
 		"""
-			Kills the current job if running using queue methods.
+		Kills the current job if running using queue methods.
 
-			Any overriding should probably happen in :ref: queue.processes and :ref: queue.stop_job.
+		Any overriding should probably happen in :ref: queue.processes and :ref: queue.stop_job.
 		"""
 		if self.is_running():
 			assert self.node is not None
@@ -262,9 +260,9 @@ class Job(object):
 
 	def result(self, *args, **kwargs):
 		"""
-			Collects the result of the completed job.
+		Collects the result of the completed job.
 
-			:return: result of the job; only requirement is that the result be compatible with :ref: summary (and other jobs), but a dict is suggested.
+		:return: result of the job; only requirement is that the result be compatible with :ref: summary (and other jobs), but a dict is suggested.
 		"""
 		if not self.is_complete():
 			return None
@@ -272,7 +270,7 @@ class Job(object):
 
 	def crash_reason(self, verbosity=0, *args, **kwargs):
 		"""
-			Find the reason the job has crashed. Should only be called for crashed jobs (by _crash_reason_if_crashed).
+		Find the reason the job has crashed. Should only be called for crashed jobs (by _crash_reason_if_crashed).
 		"""
 		if verbosity <= 0:
 			return '??'
@@ -283,15 +281,5 @@ class Job(object):
 		if not self.find_status() == self.CRASHED:
 			return None
 		return self.crash_reason(verbosity=verbosity, *args, **kwargs)
-
-	#@classmethod
-	#def summary(cls, results, jobs, *args, **kwargs):
-	#	"""
-	#		Show some sort of summary for all jobs of this class (implementation as you see fit).
-	#		:param results: list that contains the result dictionary for any jobs that don't return None;
-	#		the ``'job'`` item is set to the applicable job
-	#		:param jobs: list of jobs which are of the correct type (this class or group_cls)
-	#	"""
-	#	#(class method, called once for all jobs)
 
 

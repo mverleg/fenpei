@@ -1,6 +1,6 @@
 
 """
-	Queue using qsub to start jobs.
+Queue using qsub to start jobs.
 """
 from distutils.spawn import find_executable
 from logging import warning
@@ -134,7 +134,6 @@ class SlurmQueue(Queue):
 		outp = run_cmds((cdcmd, subcmd,), queue=self)
 		self._log(subcmd, level=3)
 		if not outp or not outp[1]:
-			print outp
 			raise self.CmdException('job {0:s} could not be queued (output is empty)'.format(job))
 		qid = findall(r'Submitted batch job (\d+)(\s|$)', outp[1])[0][0]
 		if not qid:
