@@ -215,7 +215,7 @@ class Job(object):
 		"""
 		self._start_pre(*args, **kwargs)
 		"""
-			your starting code here
+		Your starting code here.
 		"""
 		self._start_post(node, 'pid_here', *args, **kwargs)
 		return True

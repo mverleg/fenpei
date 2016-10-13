@@ -99,13 +99,14 @@ class SlurmQueue(Queue):
 		self.test_slurm()
 		assert job.directory
 		node_flags = ()
+		comment = 'batch: {0:s}; job: {1:s}; weight: {2:d}'.format(job.batch_name, job.name, job.weight)
 		if job.force_node:
 			node_flags += (
 				'--nodelist', str(job.force_node),
 				'--no-requeue',
 			)
-		comment = 'batch: {0:s}; job: {1:s}; weight: {2:d}'.format(job.batch_name, job.name, job.weight)
-		if 'EXCLUDE_NODES' in environ and environ['EXCLUDE_NODES'].strip():
+			comment = '{0:s}; forced to node: {1:s}'.format(comment, job.force_node)
+		elif 'EXCLUDE_NODES' in environ and environ['EXCLUDE_NODES'].strip():
 			node_flags += (
 				'--exclude', '"{0:}"'.format(environ['EXCLUDE_NODES']),
 			)
