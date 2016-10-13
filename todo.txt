@@ -6,4 +6,7 @@ This way, it can simply resume after losing contact with client nodes or after a
 
 Use a template langauge for substitution files, rather than just Python substitutions
 
+Make it easy to work with in interactive mode, either the interactive python interpreter or maybe Jupyter notebook
+
+
 

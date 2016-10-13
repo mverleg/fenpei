@@ -653,8 +653,8 @@ class Queue(object):
 			for param in parameters:
 				assert hasattr(job, param), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(param, job)
 				vals.append(getattr(job, param))
-			if len(vals) == 1:
-				return vals[0]
+			# if len(vals) == 1:
+			# 	return vals[0]
 			return tuple(vals)
 		jobmap = OrderedDict()
 		if filter is None:
