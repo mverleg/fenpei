@@ -5,3 +5,5 @@ data/
 _build
 .idea/
 *.egg-info/
+/build/
+/dist/

@@ -10,7 +10,7 @@ setup(
 	name='fenpei',
 	description='Distribution of tasks.',
 	long_description=readme,
-	url='',
+	url='https://github.com/mverleg/fenpei',
 	author='Mark V',
 	maintainer='(the author)',
 	author_email='mdilligaf@gmail.com',
