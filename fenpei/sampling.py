@@ -50,7 +50,7 @@ def param_sample_grid(sample_space, max_count=10000):
 				break
 	grid = [sample_space]
 	for key, value in sample_space.items():
-		print('>> key', key)
+		# print('>> key', key)
 		if isinstance(value, (int, float, str)):
 			pass
 		elif isinstance(value, (list, tuple, set, ndarray)):
@@ -68,13 +68,13 @@ def param_sample_grid(sample_space, max_count=10000):
 	return grid
 
 
-def samples_to_code(samples):
-	"""
-	UNUSED. Prints the generated samples as Python dictionary definitions (assumes the keys are strings).
-	"""
-	for sample in samples:
-		print('dict({0:s})'.format(
-			', '.join('{0:s}={1:}'.format(key, '"{0:s}"'.format(value) if isinstance(value, str) else value)
-				for key, value in sample.items())))
+# def samples_to_code(samples):
+# 	"""
+# 	UNUSED. Prints the generated samples as Python dictionary definitions (assumes the keys are strings).
+# 	"""
+# 	for sample in samples:
+# 		print('dict({0:s})'.format(
+# 			', '.join('{0:s}={1:}'.format(key, '"{0:s}"'.format(value) if isinstance(value, str) else value)
+# 				for key, value in sample.items())))
 
 

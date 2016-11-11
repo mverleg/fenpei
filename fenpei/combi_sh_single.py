@@ -155,7 +155,7 @@ class CombiSingle(ShJobSingle):
 	def _crash_reason_if_crashed(self, verbosity=0, *args, **kwargs):
 		completed, crashed = 0, 0
 		for job in self._child_jobs:
-			print(job, job.find_status())
+			# print(job, job.find_status())
 			if not job.is_complete():
 				completed += 1
 			if job._crash_reason_if_crashed():

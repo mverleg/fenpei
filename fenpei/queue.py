@@ -68,7 +68,7 @@ class Queue(object):
 		Report to user.
 		"""
 		if level <= self.show:
-			print(txt)
+			stdout.write(txt + '\n')
 
 	def all_nodes(self):
 		"""
@@ -323,13 +323,13 @@ class Queue(object):
 	def list_jobs(self, cols=2, verbosity=0, *args, **kwargs):
 		N = int(ceil(len(self.jobs) / float(cols)))
 		for k in range(N):
-			print('  | '.join(
+			stdout.write('  | '.join(
 				'{0:2d}. {1:20s} {2:>10s}'.format(p + 1, '{0:s} [{1:d}]'.format(
 					join(self.jobs[p].batch_name, self.jobs[p].name) if verbosity else self.jobs[p].name,
 					self.jobs[p].weight
 				), self.jobs[p].status_str())
 					for p in [k, k+N, k+2*N] if p < len(self.jobs)
-			))
+			) + '\n')
 
 	def run_job(self, job, filepath):
 		"""
@@ -577,7 +577,7 @@ class Queue(object):
 		"""
 		self._log('monitoring status; use cltr+C to terminate')
 		lines = len(Job.status_names) + 1
-		print('\n' * lines)
+		stdout.write('\n' * lines + '\n')
 		nothing_running_count = 0
 		while True:
 			try:
@@ -636,7 +636,8 @@ class Queue(object):
 
 	@staticmethod
 	def summary(queue):
-		print('No summary function (queue "{0:s}"). Attach a static method .summary(queue) to the queue.'.format(queue.name))
+		raise NotImplementedError(('No summary function (queue "{0:s}"). Attach a '
+			'static method .summary(queue) to the queue.').format(queue.name))
 
 	def compare_jobs(self, parameters, filter=None):
 		"""

@@ -73,7 +73,7 @@ def git_current_hash():
 	return git_current_hash._CACHE[getcwd()]
 
 
-if __name__ == '__main__':
-	print(git_current_hash())
+# if __name__ == '__main__':
+# 	print(git_current_hash())
 
 
