@@ -37,8 +37,8 @@ class CombiSingle(ShJobSingle):
 		sub_range = copy(subs)
 		sub_range.update(ranges)
 		super(CombiSingle, self).__init__(name=name, subs=sub_range, batch_name=batch_name, weight=weight, **kwargs)
-		if aggregation_func is None:
-			aggregation_func = self.aggregate
+		# if aggregation_func is None:
+		# 	aggregation_func = self.aggregate
 		self.aggregation_func = aggregation_func
 	
 	def __repr__(self):
@@ -147,9 +147,11 @@ class CombiSingle(ShJobSingle):
 		assert self.queue, 'cannot get results for {0:} since it doesn\'t have a queue'.format(self)
 		if not self.is_complete():
 			return None
-		job_results = self.queue.result(jobs=self._child_jobs)
+		job_results = self.queue.result(jobs=self._child_jobs, parallel=False)
 		if not job_results:
 			return None
+		if self.aggregation_func is None:
+			return self.aggregate(job_results)
 		return self.aggregation_func(job_results)
 
 	def _crash_reason_if_crashed(self, verbosity=0, *args, **kwargs):
