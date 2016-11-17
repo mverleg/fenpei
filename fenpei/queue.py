@@ -717,6 +717,7 @@ class Queue(object):
 		else:
 			jobs = self.get_status()[status]
 		cmd_count = 0
+		jobs = sorted(jobs, key=lambda job: job.name)
 		for job in jobs:
 			if job.is_prepared():
 				self._log('running command for {0:s}'.format(job.name), level=2)
