@@ -9,6 +9,7 @@ Distribute jobs over multiple machines by means of ssh.
 - restart failed
 """
 
+from fnmatch import fnmatch
 from logging import warning
 from subprocess import PIPE
 from subprocess import Popen
@@ -18,7 +19,7 @@ from random import sample
 from bardeen.inout import reprint
 from datetime import datetime
 from collections import defaultdict, OrderedDict
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from os import remove
 from os.path import basename, join
 from math import ceil
@@ -699,17 +700,24 @@ class Queue(object):
 
 	def crash_reason(self, parallel=None, verbosity=0, line_len=70, *args, **kwargs):
 		reasons = self.get_crash_reason(parallel=parallel, verbosity=verbosity)
+		max_name_len = max((len(job.batch_name) + len(job.name)) for job in reasons.keys()) + 1
+		log_template = '{0:' + str(max_name_len) + 's} {1:s}\n'
 		for job, reason in reasons.items():
 			txt = [reason[k:k+line_len] for k in range(0, len(reason), line_len)]
 			for k, line in enumerate(txt):
-				stdout.write('{0:28s} {1:}\n'.format('{0:}/{1:}'.format(job.batch_name, job.name) if k==0 else '', line))
+				jobname = '{0:}/{1:}'.format(job.batch_name, job.name) if k==0 else ''
+				stdout.write(log_template.format(jobname, line))
 
-	def run_cmd_per_job(self, cmd, parallel=None, verbosity=0, *args, **kwargs):
+	def run_cmd_per_job(self, cmd, parallel=None, verbosity=0, status=None, *args, **kwargs):
 		"""
 		Run a shell command in each job's directory (for --cmd).
 		"""
+		if status is None:
+			jobs = self.jobs
+		else:
+			jobs = self.get_status()[status]
 		cmd_count = 0
-		for job in self.jobs:
+		for job in jobs:
 			if job.is_prepared():
 				self._log('running command for {0:s}'.format(job.name), level=2)
 				scmd = 'cd \'{dir:s}\'; bash -c \'export NAME=\'"\'"\'{name:s}\'"\'"\' BATCH=\'"\'"\'{batch:s}\'"\'"\' STATUS=\'"\'"\'{status:s}\'"\'"\'; {cmd:s}\''.format(
@@ -728,6 +736,10 @@ class Queue(object):
 		"""
 		def summary(queue = self, *args, **kwargs): return self.summary(queue)
 		def wrap_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd)
+		def wrap_prep_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.PREPARED)
+		def wrap_run_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.RUNNING)
+		def wrap_comp_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.COMPLETED)
+		def wrap_crash_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.CRASHED)
 		parser=ArgumentParser(description='distribute jobs over available nodes',
 			epilog='actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest='verbosity', action='count', default=0, help='more information (can be used multiple times, -vv)')
@@ -749,25 +761,34 @@ class Queue(object):
 		parser.add_argument('-m', '--monitor', dest='actions', action='append_const', const=self.continuous_status, help='show job status every few seconds')
 		parser.add_argument('-x', '--result', dest='actions', action='append_const', const=summary, help='run analysis code to summarize results')
 		parser.add_argument('-t', '--whyfail', dest='actions', action='append_const', const=self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
-		parser.add_argument('-j', '--serial', dest='parallel', action='store_false', help='job commands (start, fix, etc) may NOT be run in parallel (parallel is faster but order of jobs and output is inconsistent)')
-		parser.add_argument('--jobs', dest='jobs', action='store', type=str, help='specify by name the jobs to (re)start, separated by whitespace')
+		parser.add_argument('-j', '--serial', dest='parallel', action='store_false', help='make job commands (start, fix, etc) serial (parallel is faster but order is inconsistent)')
+		parser.add_argument('--jobs', dest='jobs', action='store', type=str, help='specify by name the jobs to (re)start or use, separated by whitespace, ?*[] patterns allowed')
 		# parser.add_argument('--cmd', dest='cmd', nargs=1, action='store', type=str, help='run shell command in each of the job directories')
-		parser.add_argument('--cmd', dest='actions', nargs=1, action='append', type=wrap_cmd, help='run a shell command in the directories of each job that has a dir ($NAME/$BATCH/$STATUS if --s)')
+		parser.add_argument('--cmd', dest='actions', nargs=1, action='append', type=wrap_cmd, help='run a shell command in the directories of each job that has a dir ' + \
+			'($NAME/$BATCH/$STATUS if -s); also prep-cmd, run-cmd, comp-cmd, crash-cmd')
+		parser.add_argument('--prep-cmd', dest='actions', nargs=1, action='append', type=wrap_prep_cmd, help=SUPPRESS)
+		parser.add_argument('--run-cmd', dest='actions', nargs=1, action='append', type=wrap_run_cmd, help=SUPPRESS)
+		parser.add_argument('--comp-cmd', dest='actions', nargs=1, action='append', type=wrap_comp_cmd, help=SUPPRESS)
+		parser.add_argument('--crash-cmd', dest='actions', nargs=1, action='append', type=wrap_crash_cmd, help=SUPPRESS)
 		# remaining letters: bjnu  [-i, -y and -o are available but have commmon meanings]
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
 
 		""" Handle only specific jobs by deleting the others (not the most clean perhaps, but good enough for the occasional use). """
 		if args.jobs:
-			job_selection = set(args.jobs.split())
+			requested = dict((ptrn, 0) for ptrn in args.jobs.split())
 			for job in tuple(self.jobs):
-				if job.name in job_selection:
-					job_selection.remove(job.name)
-				else:
+				keep = False
+				for ptrn in requested.keys():
+					if fnmatch(job.name, ptrn):
+						requested[ptrn] += 1
+						keep = True
+				if not keep:
 					self.jobs.remove(job)
-			if job_selection:
+			unmatched = tuple(ptrn for ptrn, cnt in requested.items() if not cnt)
+			if unmatched:
 				parser.error('Specifically requested job(s) [{0:s}] was/were not found.'
-					.format(', '.join(job_selection)))
+					.format(', '.join(unmatched)))
 
 		if not args.actions:
 			stderr.write('No action selected. Use one or several flags to control actions.\n\n')
