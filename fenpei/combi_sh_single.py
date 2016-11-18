@@ -11,7 +11,7 @@ from fenpei.job_sh_single import ShJobSingle
 class CombiSingle(ShJobSingle):
 	#todo: don't actually need the 'Sh'(shell) part, but that's how the hierarchy grew
 	#todo: this is kind of a hybrid between a queue and a job, which is undesirable design
-	
+
 	def __init__(self, name, subs, ranges, child_cls, batch_name=None, child_kwargs=None,
 			name_template=None, aggregation_func=None, **kwargs):
 		child_kwargs = child_kwargs or {}
@@ -40,20 +40,20 @@ class CombiSingle(ShJobSingle):
 		# if aggregation_func is None:
 		# 	aggregation_func = self.aggregate
 		self.aggregation_func = aggregation_func
-	
+
 	def __repr__(self):
 		return '{0:s}*{1:d}'.format(super(CombiSingle, self).__repr__(), len(self._child_jobs))
-	
+
 	def get_default_subs(self, version=1):
 		return self._child_cls.get_default_subs(version=version)
-	
+
 	def _queue_children(self):
 		"""
 		Connect children to a queue one-way (not add them, just connect).
 		"""
 		for job in self._child_jobs:
 			job.queue = self.queue
-	
+
 	@classmethod
 	def get_files(cls):
 		return []
@@ -61,15 +61,15 @@ class CombiSingle(ShJobSingle):
 	@classmethod
 	def get_sub_files(cls):
 		return []
-	
+
 	@classmethod
 	def get_nosub_files(cls):
 		return []
-	
+
 	@classmethod
 	def run_file(cls):
 		return None
-	
+
 	def is_prepared(self):
 		self._queue_children()
 		for job in self._child_jobs:
@@ -114,7 +114,7 @@ class CombiSingle(ShJobSingle):
 		for job in self._child_jobs:
 			cnt += job.prepare(*args, verbosity=0, **kwargs)
 		return bool(cnt)
-	
+
 	def start(self, node, verbosity=0, *args, **kwargs):
 		self._queue_children()
 		cnt = 0
@@ -163,7 +163,7 @@ class CombiSingle(ShJobSingle):
 			if job._crash_reason_if_crashed():
 				crashed += 1
 		return '+' * completed + 'X' * crashed + '.' * (len(self._child_jobs) - completed - crashed)
-	
+
 	def aggregate(self, job_results):
 		"""
 		Combine results from child jobs. Used if `aggregation_func` argument is not provided.
