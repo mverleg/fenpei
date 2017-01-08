@@ -645,7 +645,7 @@ class Queue(object):
 		Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
 
 		:param filter: a function that returns True for jobs that should be included.
-		:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are parameter values for a single parameter, otherwise tuples.
+		:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are tuples of parameter values.
 		"""
 		if not hasattr(parameters, '__iter__'):
 			parameters = (parameters,)

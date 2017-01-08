@@ -200,8 +200,8 @@ class ShJob(Job):
 		"""
 		self._start_pre(*args, **kwargs)
 		""" nohup, bg and std redirect should be handeled by queue """
-		cmd = './{0:s}'.format(self.run_file())
-		pid = self.queue.run_cmd(job = self, cmd = cmd)
+		cmd = './{0:s}'.format(self.run_file())  # no abspath, not necessary, and is publicly visible in queue
+		pid = self.queue.run_cmd(job=self, cmd=cmd)
 		self._start_post(node, pid, *args, **kwargs)
 		return True
 
