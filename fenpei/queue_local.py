@@ -54,13 +54,13 @@ class LocalQueue(Queue):
 		"""
 		assert job.directory
 		cmds = [
-			'cd \'%s\'' % job.directory,
-			cmd,
-			'echo "$\!"' # pid
+			'cd \'{0:s}\';'.format(job.directory),
+			'nohup {0:s} &> all_output.txt &'.format(cmd),
+			'echo "$\!"'  # pid
 		]
-		outp = run_cmds(cmds, queue = self)
+		outp = run_cmds(cmds, queue=self)
 		if not outp:
-			raise self.CmdException('job %s could not be started' % self)
+			raise self.CmdException('job {0:} could not be started'.format(self))
 		return str(int(outp[-1]))
 
 	def stop_job(self, node, pid):

@@ -637,8 +637,8 @@ class Queue(object):
 
 	@staticmethod
 	def summary(queue):
-		raise NotImplementedError(('No summary function (queue "{0:s}"). Attach a '
-			'static method .summary(queue) to the queue.').format(queue.name))
+		raise NotImplementedError(('No summary function (queue "{0:}"). Attach a '
+			'static method .summary(queue) to the queue.').format(queue))
 
 	def compare_jobs(self, parameters, filter=None):
 		"""
