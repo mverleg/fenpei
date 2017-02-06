@@ -16,10 +16,19 @@ class CombiSingle(ShJobSingle):
 			name_template=None, aggregation_func=None, **kwargs):
 		child_kwargs = child_kwargs or {}
 		self._child_cls = child_cls
-		self._child_jobs = []
-		weight = 0
 		params = ranges.keys()
 		combis = product(*ranges.values())
+		weight = self._make_children(params, combis, subs, name_template=name_template, name=name,
+			batch_name=batch_name, child_kwargs=child_kwargs)
+		sub_range = copy(subs)
+		sub_range.update(ranges)
+		super(CombiSingle, self).__init__(name=name, subs=sub_range, batch_name=batch_name, weight=weight, **kwargs)
+		self.aggregation_func = aggregation_func
+	
+	def _make_children(self, params, combis, subs, name_template, name, batch_name, child_kwargs):
+		self._child_jobs = []
+		assert hasattr(combis, '__iter__')
+		weight = 0
 		for combi in combis:
 			childsubs = copy(subs)
 			for param, value in zip(params, combi):
@@ -31,16 +40,11 @@ class CombiSingle(ShJobSingle):
 				childname = '_'.join([name, ''] + sorted(nameparts))
 			else:
 				childname = name_template.format(name=name, **childsubs)
-			subjob = child_cls(name=childname, subs=childsubs, batch_name=batch_name, **child_kwargs)
+			subjob = self._child_cls(name=childname, subs=childsubs, batch_name=batch_name, **child_kwargs)
 			self._child_jobs.append(subjob)
 			weight += subjob.weight
-		sub_range = copy(subs)
-		sub_range.update(ranges)
-		super(CombiSingle, self).__init__(name=name, subs=sub_range, batch_name=batch_name, weight=weight, **kwargs)
-		# if aggregation_func is None:
-		# 	aggregation_func = self.aggregate
-		self.aggregation_func = aggregation_func
-
+		return weight
+	
 	def __repr__(self):
 		return '{0:s}*{1:d}'.format(super(CombiSingle, self).__repr__(), len(self._child_jobs))
 
@@ -53,7 +57,10 @@ class CombiSingle(ShJobSingle):
 		"""
 		for job in self._child_jobs:
 			job.queue = self.queue
-
+	
+	def get_jobs(self):
+		return tuple(self._child_jobs)
+	
 	@classmethod
 	def get_files(cls):
 		return []
@@ -80,7 +87,6 @@ class CombiSingle(ShJobSingle):
 		return True
 
 	def is_started(self):
-		#todo: optimization by doing previously running jobs last
 		self._queue_children()
 		for job in self._child_jobs:
 			if not job.is_started():
@@ -90,7 +96,6 @@ class CombiSingle(ShJobSingle):
 		return True
 
 	def is_running(self):
-		#todo: optimization by doing previously running jobs last
 		self._queue_children()
 		for job in self._child_jobs:
 			if job.is_running():
@@ -113,35 +118,36 @@ class CombiSingle(ShJobSingle):
 		cnt = 0
 		for job in self._child_jobs:
 			cnt += job.prepare(*args, verbosity=0, **kwargs)
-		return bool(cnt)
+		return cnt
 
 	def start(self, node, verbosity=0, *args, **kwargs):
 		self._queue_children()
 		cnt = 0
 		for job in self._child_jobs:
-			cnt += job.start(node, *args, verbosity=0, **kwargs)
-		return bool(cnt)
+			if not job.is_started():
+				cnt += job.start(node, *args, verbosity=0, **kwargs)
+		return cnt
 
 	def fix(self, verbosity=0, *args, **kwargs):
 		self._queue_children()
 		cnt = 0
 		for job in self._child_jobs:
 			cnt += job.fix(*args, verbosity=0, **kwargs)
-		return bool(cnt)
+		return cnt
 
 	def kill(self, verbosity=0, *args, **kwargs):
 		self._queue_children()
 		cnt = 0
 		for job in self._child_jobs:
 			cnt += job.kill(*args, verbosity=0, **kwargs)
-		return bool(cnt)
+		return cnt
 
 	def cleanup(self, skip_conflicts=False, verbosity=0, *args, **kwargs):
 		self._queue_children()
 		cnt = 0
 		for job in self._child_jobs:
 			cnt += job.cleanup(skip_conflicts=skip_conflicts, *args, verbosity=0, **kwargs)
-		return bool(cnt)
+		return cnt
 
 	def result(self, *args, **kwargs):
 		assert self.queue, 'cannot get results for {0:} since it doesn\'t have a queue'.format(self)

@@ -9,38 +9,25 @@ Distribute jobs over multiple machines by means of ssh.
 - restart failed
 """
 
+from argparse import ArgumentParser, SUPPRESS
+from collections import defaultdict, OrderedDict
+from datetime import datetime
 from fnmatch import fnmatch
+from functools import partial
 from logging import warning
+from math import ceil
+from os import remove
+from os.path import basename, join
+from random import sample
 from subprocess import PIPE
 from subprocess import Popen
 from sys import stdout, stderr
 from time import time, sleep
-from random import sample
 from bardeen.inout import reprint
-from datetime import datetime
-from collections import defaultdict, OrderedDict
-from argparse import ArgumentParser, SUPPRESS
-from os import remove
-from os.path import basename, join
-from math import ceil
-from functools import partial
-from .shell import run_cmds_on, run_cmds
+from fenpei.utils import job_task, compare_jobs, compare_results, job_results
 from .job import Job
+from .shell import run_cmds_on
 from .utils import get_pool_light, TMP_DIR, thread_map
-
-
-def job_task_run(job, method, **kwargs):
-	"""
-	Runs an arbitrary method of job; used by job_task.
-	"""
-	return getattr(job, method)(**kwargs)
-
-
-def job_task(method, **kwargs):
-	"""
-	Returns a function that runs an arbitrary method of an object, for passing to Pool.map
-	"""
-	return partial(job_task_run, method=method, **kwargs)
 
 
 class Queue(object):
@@ -321,6 +308,18 @@ class Queue(object):
 	def get_jobs(self):
 		return self.jobs
 
+	def compare_jobs(self, parameters, filter=None):
+		return compare_jobs(self.jobs, parameters, filter=filter)
+	
+	def compare_results(self, parameters, filter=None):
+		return compare_results(self.jobs, parameters, filter=filter)
+	
+	def result(self, parallel=None, *args, **kwargs):
+		parallel = self.parallel if parallel is None else parallel
+		results = job_results(parallel=parallel, *args, **kwargs)
+		self._log('retrieved results for %d jobs' % len(self.jobs))
+		return results
+
 	def list_jobs(self, cols=2, verbosity=0, *args, **kwargs):
 		N = int(ceil(len(self.jobs) / float(cols)))
 		for k in range(N):
@@ -375,7 +374,6 @@ class Queue(object):
 		"""
 		parallel = self.parallel if parallel is None else parallel
 		if parallel:
-			#statuses = get_pool_light().map(job_task('prepare', **kwargs), self.jobs)
 			statuses = thread_map(job_task('prepare', **kwargs), self.jobs)
 		else:
 			statuses = (job.prepare(**kwargs) for job in self.jobs)
@@ -613,71 +611,11 @@ class Queue(object):
 		status_list = self.get_status()
 		self.show_status(status_list, verbosity=verbosity)
 
-	def result(self, parallel=None, jobs=None, *args, **kwargs):
-		"""
-		:return: a dict of job results, with jobs as keys.
-		"""
-		parallel = self.parallel if parallel is None else parallel
-		# parallel = False  # override because parallel is much slower for some reason.
-		if jobs is None:
-			jobs = self.jobs
-		results = OrderedDict()
-		if parallel:
-			resli = get_pool_light().map(job_task('result', **kwargs), jobs)
-			for job, res in zip(jobs, resli):
-				results[job] = res
-		else:
-			for job in jobs:
-				results[job] = job.result(*args, **kwargs)
-		for job, res in results.items():
-			if res and 'in' not in res:
-				res['in'] = job.get_input()
-		self._log('retrieved results for %d jobs' % len(jobs))
-		return results
-
 	@staticmethod
 	def summary(queue):
 		raise NotImplementedError(('No summary function (queue "{0:}"). Attach a '
 			'static method .summary(queue) to the queue.').format(queue))
 
-	def compare_jobs(self, parameters, filter=None):
-		"""
-		Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
-
-		:param filter: a function that returns True for jobs that should be included.
-		:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are tuples of parameter values.
-		"""
-		if not hasattr(parameters, '__iter__'):
-			parameters = (parameters,)
-		assert len(parameters) > 0, 'Provide a job attribute to compare jobs.'
-		def get_key(j):
-			vals = []
-			for param in parameters:
-				assert hasattr(job, param), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(param, job)
-				vals.append(getattr(job, param))
-			# if len(vals) == 1:
-			# 	return vals[0]
-			return tuple(vals)
-		jobmap = OrderedDict()
-		if filter is None:
-			filter = lambda obj: True
-		for job in self.jobs:
-			if filter(job):
-				key = get_key(job)
-				assert key not in jobmap, 'Can not compare jobs on "{0:}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters, jobmap[key], job, key)
-				jobmap[key] = job
-		return jobmap
-
-	def compare_results(self, parameters, filter=None):
-		"""
-		Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
-		"""
-		""" param -> job """
-		jobmap = self.compare_jobs(parameters, filter=filter)
-		""" job -> result """
-		results = self.result(jobs=jobmap.values())
-		""" param -> result [if complete] """
-		return OrderedDict((parval, results[job]) for parval, job in jobmap.items() if results[job] is not None)
 
 	def get_crash_reason(self, parallel=None, verbosity=0):
 		"""

@@ -58,7 +58,10 @@ class ShJobSingle(ShJob):
 		""" Now fill in the substitutions (in a copied version). """
 		self.files = {fileinfo: (copy(self.substitutions) if subs is True else None) for (fileinfo, subs) in self.__class__._FIXED_CACHE.items()}
 		self.parameter_file_path = join(self.directory, 'parameters.json')
-
+	
+	def get_param_tuple(self):
+		return tuple(self.substitutions[name] for name in self.parameter_names)
+	
 	def _calc_param_hash(self):
 		param_data = hash(tuple(self.substitutions[nm] for nm in self.parameter_names))
 		return urlsafe_b64encode(pack('!q', param_data)).rstrip('=')

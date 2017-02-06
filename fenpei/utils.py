@@ -1,4 +1,4 @@
-
+from collections import OrderedDict
 from functools import partial
 from multiprocessing import Pool, cpu_count
 from tempfile import gettempdir
@@ -146,5 +146,80 @@ def substitute_jinja2(text, substitutions, job=None, filename=None):
 	except TemplateSyntaxError as err:
 		raise TemplateSyntaxError('In file {0:s}: {1:}'.format(filename, err), err.lineno)
 	return template.render(**substitutions)
+
+
+def compare_jobs(jobs, parameters, filter=None):
+	"""
+	Get a parameters -> job mapping. The parameters are expected to identify unique jobs.
+
+	:param filter: a function that returns True for jobs that should be included.
+	:return: Without parameters, a list of jobs. With parameters, a mapping from parameter to accompanying jobs. Indices are tuples of parameter values.
+	"""
+	if not hasattr(parameters, '__iter__'):
+		parameters = (parameters,)
+	assert len(parameters) > 0, 'Provide a job attribute to compare jobs.'
+	def get_key(jb):
+		vals = []
+		for param in parameters:
+			assert hasattr(jb, param), 'Can not compare jobs on "{0:s}" since job "{1:s}" does not have this attribute.'.format(param, jb)
+			vals.append(getattr(jb, param))
+		# if len(vals) == 1:
+		# 	return vals[0]
+		return tuple(vals)
+	jobmap = OrderedDict()
+	if filter is None:
+		filter = lambda obj: True
+	for job in jobs:
+		if filter(job):
+			key = get_key(job)
+			assert key not in jobmap, 'Can not compare jobs on "{0:}" since jobs "{1:s}" and "{2:s}" both have value <{3:}>, but values should be unique.'.format(parameters, jobmap[key], job, key)
+			jobmap[key] = job
+	return jobmap
+
+
+def compare_results(jobs, parameters, filter=None):
+	"""
+	Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
+	"""
+	""" param -> job """
+	jobmap = compare_jobs(jobs, parameters, filter=filter)
+	""" job -> result """
+	results = job_results(jobs=jobmap.values())
+	""" param -> result [if complete] """
+	return OrderedDict((parval, results[job]) for parval, job in jobmap.items() if results[job] is not None)
+
+
+def job_results(jobs, parallel=False, *args, **kwargs):
+	"""
+	:return: a dict of job results, with jobs as keys.
+	"""
+	if jobs is None:
+		jobs = jobs
+	results = OrderedDict()
+	if parallel:
+		resli = get_pool_light().map(job_task('result', **kwargs), jobs)
+		for job, res in zip(jobs, resli):
+			results[job] = res
+	else:
+		for job in jobs:
+			results[job] = job.result(*args, **kwargs)
+	for job, res in results.items():
+		if res and 'in' not in res:
+			res['in'] = job.get_input()
+	return results
+
+
+def job_task_run(job, method, **kwargs):
+	"""
+	Runs an arbitrary method of job; used by job_task.
+	"""
+	return getattr(job, method)(**kwargs)
+
+
+def job_task(method, **kwargs):
+	"""
+	Returns a function that runs an arbitrary method of an object, for passing to Pool.map
+	"""
+	return partial(job_task_run, method=method, **kwargs)
 
 
