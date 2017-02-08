@@ -71,7 +71,7 @@ class Job(object):
 		"""
 		if self.queue is None:
 			if len(txt.strip()):
-				stdout.write(txt + '\n')
+				stdout.write('(no queue) ' + txt + '\n')
 			else:
 				stdout.write('(empty)\n')
 		else:
@@ -193,8 +193,8 @@ class Job(object):
 					if self.is_running():
 						self.kill()
 				else:
-					raise AssertionError('you are trying to restart a job that is running or completed; ' + \
-						'use restart (-e) to skip such jobs or -f to overrule this warning')
+					raise AssertionError(('you are trying to restart a job that is running or completed ({0:}); ' +
+						'use restart (-e) to skip such jobs or -f to overrule this warning').format(self))
 		if not self.is_prepared():
 			self.prepare(silent=True)
 

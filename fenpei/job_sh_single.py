@@ -159,15 +159,28 @@ class ShJobSingle(ShJob):
 		except (OSError, IOError) as err:
 			raise AssertionError(('Job {0:} has no loadable stored parameters for consistency checking; ' +
 				'they can be created using -g [load error: {1:}]').format(self, err))
+		problems = []
 		before, now = set(retrieved.keys()), set(self.parameter_names)
-		assert not (before - now), 'settings disappeared compared to when job was run: {0:} (-gf to reset this check)'\
-			.format(', '.join(before - now))
-		assert not (now - before), 'new settings appeared compared to when job was run: {0:} (-gf to reset this check)'\
-			.format(', '.join(now - before))
+		if before - now:
+			problems.extend('removed parameter {0:s}'.format(s) for s in before - now)
+			# 'settings disappeared compared to when job was run: {0:} (-gf to reset this check)'\
+			# .format(', '.join(before - now))
+		if now - before:
+			problems.extend('new parameter {0:s}'.format(s) for s in now - before)
+			# 'new settings appeared compared to when job was run: {0:} (-gf to reset this check)'\
+			# .format(', '.join(now - before))
 		for name in self.parameter_names:
+			if name not in self.substitutions or name not in retrieved:
+				continue
 			if not retrieved[name] == self.substitutions[name]:
-				raise AssertionError('parameter {0:} for job {1:} was initially an {2:} <{3:}> but is now {4:} <{5:}>'
-					.format(name, self, type(retrieved[name]).__name__, retrieved[name],
+				problems.append('changed parameter {0:} from {1:} <{2:}> to {3:} <{4:}>'
+					.format(name, type(retrieved[name]).__name__, retrieved[name],
 					type(self.substitutions[name]).__name__, self.substitutions[name]))
+				# raise AssertionError('parameter {0:} for job {1:} was initially an {2:} <{3:}> but is now {4:} <{5:}>'
+				# 	.format(name, self, type(retrieved[name]).__name__, retrieved[name],
+				# 	type(self.substitutions[name]).__name__, self.substitutions[name]))
+		if problems:
+			raise AssertionError(('parameters changed compared to when job was run, which may invalidate the results: '
+				'{0:s}; if the results remain valid, reset this using -gf').format(', '.join(problems)))
 
 

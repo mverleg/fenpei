@@ -638,6 +638,7 @@ class Queue(object):
 
 	def crash_reason(self, parallel=None, verbosity=0, line_len=70, *args, **kwargs):
 		reasons = self.get_crash_reason(parallel=parallel, verbosity=verbosity)
+		if not reasons: return
 		max_name_len = max((len(job.batch_name) + len(job.name)) for job in reasons.keys()) + 1
 		log_template = '{0:' + str(max_name_len) + 's} {1:s}\n'
 		for job, reason in reasons.items():
@@ -679,7 +680,7 @@ class Queue(object):
 		def wrap_run_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.RUNNING)
 		def wrap_comp_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.COMPLETED)
 		def wrap_crash_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.CRASHED)
-		parser=ArgumentParser(description='distribute jobs over available nodes',
+		parser = ArgumentParser(description='distribute jobs over available nodes',
 			epilog='actions are executed (largely) in the order they are supplied; some actions may call others where necessary')
 		parser.add_argument('-v', '--verbose', dest='verbosity', action='count', default=0, help='more information (can be used multiple times, -vv)')
 		parser.add_argument('-f', '--force', dest='force', action='store_true', help='force certain mistake-sensitive steps instead of failing with a warning')

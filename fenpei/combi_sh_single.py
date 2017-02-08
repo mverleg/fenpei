@@ -6,6 +6,7 @@ A job that represents a series of subjobs whose results should be joined.
 from copy import copy
 from itertools import product
 from fenpei.job_sh_single import ShJobSingle
+from fenpei.utils import compare_results
 
 
 class CombiSingle(ShJobSingle):
@@ -24,6 +25,10 @@ class CombiSingle(ShJobSingle):
 		sub_range.update(ranges)
 		super(CombiSingle, self).__init__(name=name, subs=sub_range, batch_name=batch_name, weight=weight, **kwargs)
 		self.aggregation_func = aggregation_func
+		self.input = sub_range
+	
+	def get_input(self):
+		return copy(self.input)
 	
 	def _make_children(self, params, combis, subs, name_template, name, batch_name, child_kwargs):
 		self._child_jobs = []
@@ -44,6 +49,9 @@ class CombiSingle(ShJobSingle):
 			self._child_jobs.append(subjob)
 			weight += subjob.weight
 		return weight
+	
+	def compare_results(self, parameters=('name',), filter=None):
+		return compare_results(self._child_jobs, parameters=parameters, filter=filter)
 	
 	def __repr__(self):
 		return '{0:s}*{1:d}'.format(super(CombiSingle, self).__repr__(), len(self._child_jobs))
@@ -124,7 +132,7 @@ class CombiSingle(ShJobSingle):
 		self._queue_children()
 		cnt = 0
 		for job in self._child_jobs:
-			if not job.is_started():
+			if job.find_status() not in {job.RUNNING, job.COMPLETED, job.CRASHED}:
 				cnt += job.start(node, *args, verbosity=0, **kwargs)
 		return cnt
 
@@ -161,14 +169,20 @@ class CombiSingle(ShJobSingle):
 		return self.aggregation_func(job_results)
 
 	def _crash_reason_if_crashed(self, verbosity=0, *args, **kwargs):
+		self._queue_children()
 		completed, crashed = 0, 0
+		crashexample = None
 		for job in self._child_jobs:
 			# print(job, job.find_status())
 			if not job.is_complete():
 				completed += 1
-			if job._crash_reason_if_crashed():
+			if job.find_status() == job.CRASHED:
+				crashexample = crashexample or job
 				crashed += 1
-		return '+' * completed + 'X' * crashed + '.' * (len(self._child_jobs) - completed - crashed)
+		crashinfo = '+' * completed + 'C' * crashed + '.' * (len(self._child_jobs) - completed - crashed)
+		if crashexample:
+			crashinfo = '{0:s}; example {1:}: "{2:s}"'.format(crashinfo, crashexample, crashexample._crash_reason_if_crashed(verbosity=verbosity))
+		return crashinfo
 
 	def aggregate(self, job_results):
 		"""
