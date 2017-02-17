@@ -380,17 +380,17 @@ class Queue(object):
 		prepare_count = sum(int(status) for status in statuses)
 		self._log('prepared %d jobs' % prepare_count)
 
-	def running_count(self):
-		"""
-		How many running jobs.
-		"""
-		return len(self.get_status()[Job.RUNNING])
-
-	def running_weight(self):
-		"""
-		Total weight of running jobs.
-		"""
-		return sum(job.weight for job in self.get_status()[Job.RUNNING])
+	# def running_count(self):
+	# 	"""
+	# 	How many running jobs.
+	# 	"""
+	# 	return len(self.get_status()[Job.RUNNING])
+	#
+	# def running_weight(self):
+	# 	"""
+	# 	Total weight of running jobs.
+	# 	"""
+	# 	return sum(job.weight for job in self.get_status()[Job.RUNNING])
 
 	def start(self, parallel=None, verbosity=0, *args, **kwargs):
 		"""
@@ -398,47 +398,150 @@ class Queue(object):
 		"""
 		self._quota_warning()
 		self._same_path_check(fail=True)
-		# if self.all:
-		# 	if self.weight:
-		# 		self._log('starting all jobs; specific weight (-w) ignored')
-		# 	if self.limit:
-		# 		self._log('starting all jobs; limit weight (-q) ignored')
-		W = float('inf')
-		if self.limit:
-			W = max(self.limit - self.running_weight(), 0)
-			if verbosity:
-				if not self.weight:
-					self._log('starting jobs with weight %d (no minimum)' % W)
-				elif W < self.weight:
-					self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
-				else:
-					self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))
-		elif self.weight:
-			W = self.weight
-			self._log('starting jobs with weight %d (by fixed weight)' % self.weight)
-		self.start_weight(W, parallel=parallel)
+		job_status = self.get_status()
+		start_jobs = self.select_start_jobs(weight=self.weight, limit=self.limit,
+			restart=self.restart, job_status=job_status)
+		self._log('starting {0:d} jobs with weight {1:d}'.format(
+			len(start_jobs), sum((job.weight for job in start_jobs), 0)), level=2)
+		self.distribute_jobs(jobs=start_jobs)
+		start_cnt = 0
+		for node_nr, jobs in self.distribution.items():
+			""" Removed parallism here because it made things slower (and more complicated). """
+			for job in jobs:
+				node = self.nodes[node_nr]
+				if job.is_started():
+					job.cleanup(**kwargs)
+				start_cnt += job.start(node, **kwargs)
+				# batch.append((job, self.nodes[node_nr]))
+			# if parallel:
+			# 	statuses = get_pool_light().map(partial(_start_job_on_node, **kwargs), batch)
+			# else:
+			# statuses = map(partial(_start_job_on_node, **kwargs), batch)
+			# start_count = sum(int(status) for status in statuses)
+		self._log('started {0:d} jobs'.format(start_cnt, level=1))
+			# 		self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
+		#
+		# W = float('inf')
+		# if self.limit:
+		# 	W = max(self.limit - self.running_weight(), 0)
+		# 	if verbosity:
+		# 		if not self.weight:
+		# 			self._log('starting jobs with weight %d (no minimum)' % W)
+		# 		elif W < self.weight:
+		# 			self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
+		# 		else:
+		# 			self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))
+		# elif self.weight:
+		# 	W = self.weight
+		# 	self._log('starting jobs with weight %d (by fixed weight)' % self.weight)
+		# self.start_weight(W, parallel=parallel)
 
-	def start_weight(self, weight, parallel=None, *args, **kwargs):
+	# def start_weight(self, weight, parallel=None, *args, **kwargs):
+	# 	"""
+	# 	(Re)start jobs with an approximation of total weight.
+	# 	"""
+	# 	parallel = self.parallel if parallel is None else parallel
+	# 	parallel = False  # override because it's slow in this case, somehow...
+	# 	batch = []
+	# 	jobs = self.get_jobs_by_weight(weight)
+	# 	if len(jobs):
+	# 		self.distribute_jobs(jobs = jobs)
+	# 		for node_nr, jobs in self.distribution.items():
+	# 			for job in jobs:
+	# 				batch.append((job, self.nodes[node_nr]))
+	# 		if parallel:
+	# 			statuses = get_pool_light().map(partial(_start_job_on_node, **kwargs), batch)
+	# 		else:
+	# 			statuses = map(partial(_start_job_on_node, **kwargs), batch)
+	# 		start_count = sum(int(status) for status in statuses)
+	# 		self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
+	# 	else:
+	# 		self._log('no jobs to restart' if self.restart else 'no jobs to start')
+
+	def select_start_jobs(self, weight, limit, restart, job_status=None):
 		"""
-		(Re)start jobs with an approximation of total weight.
+		Find jobs in job_status or self.get_status() that can be started to stay within the weight and count limits provided.
+		
+		:param weight: Total running weight limit.
+		:param limit: Total running count limit.
+		:param restart: Whether crashed jobs should be restarted (at comparable weight, start fresh ones first).
+		:param job_status:
+		:return:
 		"""
-		parallel = self.parallel if parallel is None else parallel
-		parallel = False  # override because it's slow in this case, somehow...
-		batch = []
-		jobs = self.get_jobs_by_weight(weight)
-		if len(jobs):
-			self.distribute_jobs(jobs = jobs)
-			for node_nr, jobs in self.distribution.items():
-				for job in jobs:
-					batch.append((job, self.nodes[node_nr]))
-			if parallel:
-				statuses = get_pool_light().map(partial(_start_job_on_node, **kwargs), batch)
-			else:
-				statuses = map(partial(_start_job_on_node, **kwargs), batch)
-			start_count = sum(int(status) for status in statuses)
-			self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
+		""" Find jobs with startable status. """
+		if job_status is None:
+			job_status = self.get_status()
+		startable = job_status[Job.PREPARED] + job_status[Job.NONE]
+		for job in startable:
+			job._crash_score = 1
+		if restart:
+			self._log('crashed jobs are eligible for restarting', level=3)
+			for job in job_status[Job.CRASHED]:
+				job._crash_score = 0
+			startable.extend(job_status[Job.CRASHED])
 		else:
-			self._log('no jobs to restart' if self.restart else 'no jobs to start')
+			self._log('only unstarted jobs will be started', level=3)
+		if not self.weight and not self.limit:
+			return startable
+		startable = sorted((job for jb in startable), key=lambda job: job.weight + 2 * job._crash_score, reverse=False)
+		""" Remove jobs to reach the requested weight. """
+		if weight:
+			start_jobs = []
+			running_weight = sum(job.weight for job in job_status[Job.RUNNING])
+			self._log('{0:d} jobs with weight {1:d} already running'.format(len(job_status[Job.RUNNING]), running_weight), level=3)
+			weight_left = weight - running_weight
+			while startable and weight_left > 0:
+				consider_job = startable.pop()
+				if weight_left > consider_job.weight:
+					weight_left -= consider_job.weight
+					start_jobs.append(consider_job)
+			self._log('pre-selecting {0:d} jobs with weight {1:d} to stay under limit of {2:d}'
+				.format(len(start_jobs), sum((job.weight for job in start_jobs), 0), weight), level=3)
+		else:
+			start_jobs = startable
+			self._log('pre-selecting all {0:d} eligible jobs for starting'.format(len(start_jobs)), level=3)
+		""" Limit the total number of jobs to start. """
+		if limit:
+			# todo: sort jobs by descrending weight
+			running_count = len(job_status[Job.RUNNING])
+			start_count = min(limit - running_count, 0)
+			self._log('starting {0:d} of {1:d} eligible jobs, to stay under limit of {2:d} with {3:d} already running'
+				.format(start_count, len(start_jobs), limit, running_count), level=3)
+			start_jobs = start_jobs[:start_count]
+		else:
+			self.log('keeping {0:d} for starting since no limit was provided'.format(len(start_jobs)), level=3)
+		return start_jobs
+	
+	# def get_jobs_by_weight(self, max_weight):
+	# 	"""
+	# 	Find jobs with an approximation of total weight.
+	# 	"""
+	# 	""" find eligible jobs (in specific order) """
+	# 	job_status = self.get_status()
+	# 	if self.restart:
+	# 		startable = job_status[Job.PREPARED] + job_status[Job.NONE] + job_status[Job.CRASHED]
+	# 	else:
+	# 		startable = job_status[Job.PREPARED] + job_status[Job.NONE]
+	# 	if not startable:
+	# 		self._log('there are no jobs that can be started')
+	# 		return []
+	# 	total_weight = sum(job.weight for job in startable)
+	# 	if not total_weight:
+	# 		""" start only one job """
+	# 		jobs = [startable[0]]
+	# 	elif max_weight > total_weight or max_weight is None:
+	# 		""" start all jobs """
+	# 		jobs = startable
+	# 	else:
+	# 		""" start jobs with specific weight """
+	# 		jobs, current_weight = [], 0
+	# 		startable = sorted(startable, key = lambda item: - item.weight - (10 if item.status == Job.CRASHED else 0))
+	# 		for job in startable:
+	# 			if current_weight + job.weight <= max_weight:
+	# 				jobs.append(job)
+	# 				current_weight += job.weight
+	# 	self._log('starting: ' + ', '.join(job.name for job in jobs), level = 2)
+	# 	return jobs
 
 	def _quota_warning(self):
 		try:
@@ -471,37 +574,6 @@ class Queue(object):
 				warning(msg)
 			pths.add((job.batch_name, job.name))
 		return pths
-
-	def get_jobs_by_weight(self, max_weight):
-		"""
-		Find jobs with an approximation of total weight.
-		"""
-		""" find eligible jobs (in specific order) """
-		job_status = self.get_status()
-		if self.restart:
-			startable = job_status[Job.PREPARED] + job_status[Job.NONE] + job_status[Job.CRASHED]
-		else:
-			startable = job_status[Job.PREPARED] + job_status[Job.NONE]
-		if not startable:
-			self._log('there are no jobs that can be started')
-			return []
-		total_weight = sum(job.weight for job in startable)
-		if not total_weight:
-			""" start only one job """
-			jobs = [startable[0]]
-		elif max_weight > total_weight or max_weight is None:
-			""" start all jobs """
-			jobs = startable
-		else:
-			""" start jobs with specific weight """
-			jobs, current_weight = [], 0
-			startable = sorted(startable, key = lambda item: - item.weight - (10 if item.status == Job.CRASHED else 0))
-			for job in startable:
-				if current_weight + job.weight <= max_weight:
-					jobs.append(job)
-					current_weight += job.weight
-		self._log('starting: ' + ', '.join(job.name for job in jobs), level = 2)
-		return jobs
 
 	def fix(self, parallel=None, *args, **kwargs):
 		"""
@@ -795,9 +867,9 @@ class Queue(object):
 		return [str(action) for action in actions]
 
 
-def _start_job_on_node(info, **kwargs):
-	job, node = info
+# def _start_job_on_node(info, **kwargs):
+# 	job, node = info
 	# job.cleanup(**kwargs)
-	return job.start(node, **kwargs)
+	# return job.start(node, **kwargs)
 
 
