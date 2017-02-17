@@ -1,3 +1,4 @@
+
 from collections import OrderedDict
 from functools import partial
 from multiprocessing import Pool, cpu_count
@@ -7,13 +8,13 @@ from warnings import warn
 from bardeen.system import mkdirp
 from os import environ, chmod
 from os.path import join, expanduser
-
 from jinja2 import StrictUndefined
+
 
 if 'CALC_DIR' in environ:
 	CALC_DIR = environ['CALC_DIR']
 else:
-	CALC_DIR = join(expanduser('~'), 'data/sheffield')
+	CALC_DIR = join(expanduser('~'), 'data')
 
 TMP_DIR = join(gettempdir(), 'fenpei')
 mkdirp(TMP_DIR)
@@ -177,14 +178,14 @@ def compare_jobs(jobs, parameters, filter=None):
 	return jobmap
 
 
-def compare_results(jobs, parameters, filter=None):
+def compare_results(jobs, parameters, parallel=None, filter=None):
 	"""
 	Similar to compare_jobs but uses a map from parameters -> results instead. Furthermore, jobs without results are omitted.
 	"""
 	""" param -> job """
 	jobmap = compare_jobs(jobs, parameters, filter=filter)
 	""" job -> result """
-	results = job_results(jobs=jobmap.values())
+	results = job_results(jobs=jobmap.values(), parallel=parallel)
 	""" param -> result [if complete] """
 	return OrderedDict((parval, results[job]) for parval, job in jobmap.items() if results[job] is not None)
 

@@ -457,7 +457,11 @@ class Queue(object):
 		found = 0
 		for job in self.jobs:
 			if (job.batch_name, job.name) in pths:
-				msg = 'there are multiple jobs with location {0:s}/{1:s}'.format(job.batch_name, job.name)
+				if job.batch_name:
+					pthname = '{0:s}/{1:s}'.format(job.batch_name, job.name)
+				else:
+					pthname = job.name
+				msg = 'there are multiple jobs with location {0:s}'.format(pthname)
 				if fail:
 					raise AssertionError(msg)
 				found += 1
@@ -611,11 +615,18 @@ class Queue(object):
 		status_list = self.get_status()
 		self.show_status(status_list, verbosity=verbosity)
 
+	# @staticmethod
+	# def pre_summary(queue, *args, **kwargs):
+	# 	pass
+	
 	@staticmethod
 	def summary(queue):
 		raise NotImplementedError(('No summary function (queue "{0:}"). Attach a '
 			'static method .summary(queue) to the queue.').format(queue))
 
+	# @staticmethod
+	# def post_summary(queue, *args, **kwargs):
+	# 	pass
 
 	def get_crash_reason(self, parallel=None, verbosity=0):
 		"""
@@ -674,7 +685,11 @@ class Queue(object):
 		"""
 		Analyze sys.argv and run commands based on it.
 		"""
-		def summary(queue = self, *args, **kwargs): return self.summary(queue)
+		def wrap_summary(queue=self, *args, **kwargs):
+			# self.pre_summary(queue, *args, **kwargs)
+			output = self.summary(queue)
+			# self.post_summary(queue, *args, **kwargs)
+			return output
 		def wrap_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd)
 		def wrap_prep_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.PREPARED)
 		def wrap_run_cmd(cmd): return partial(self.run_cmd_per_job, cmd=cmd, status=Job.RUNNING)
@@ -699,7 +714,7 @@ class Queue(object):
 		parser.add_argument('-g', '--fix', dest='actions', action='append_const', const=self.fix, help='fix jobs, check cache etc (e.g. after update)')
 		parser.add_argument('-s', '--status', dest='actions', action='append_const', const=self.status, help='show job status')
 		parser.add_argument('-m', '--monitor', dest='actions', action='append_const', const=self.continuous_status, help='show job status every few seconds')
-		parser.add_argument('-x', '--result', dest='actions', action='append_const', const=summary, help='run analysis code to summarize results')
+		parser.add_argument('-x', '--result', dest='actions', action='append_const', const=wrap_summary, help='run analysis code to summarize results')
 		parser.add_argument('-t', '--whyfail', dest='actions', action='append_const', const=self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
 		parser.add_argument('-j', '--serial', dest='parallel', action='store_false', help='make job commands (start, fix, etc) serial (parallel is faster but order is inconsistent)')
 		parser.add_argument('--jobs', dest='jobs', action='store', type=str, help='specify by name the jobs to (re)start or use, separated by whitespace, ?*[] patterns allowed')

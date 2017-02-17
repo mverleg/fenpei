@@ -139,7 +139,8 @@ class ShJob(Job):
 		"""
 		for fromroot, frompth, topth in self.files.keys():
 			if not isfile(join(self.directory, topth)) and not islink(join(self.directory, topth)):
-				self._log('{0:s} is not prepared because {1:s} (and possibly more) are missing'.format(self.name, frompth), 3)
+				self._log('{0:s} is not prepared because {1:s} (and possibly more) are missing'
+					.format(self.name, frompth), 3)
 				return False
 		if not isfile(join(self.directory, self.run_file())):
 			return False

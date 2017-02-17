@@ -51,7 +51,8 @@ class CombiSingle(ShJobSingle):
 		return weight
 	
 	def compare_results(self, parameters=('name',), filter=None):
-		return compare_results(self._child_jobs, parameters=parameters, filter=filter)
+		self._queue_children()
+		return compare_results(self._child_jobs, parameters=parameters, parallel=self.queue.parallel, filter=filter)
 	
 	def __repr__(self):
 		return '{0:s}*{1:d}'.format(super(CombiSingle, self).__repr__(), len(self._child_jobs))
@@ -84,6 +85,14 @@ class CombiSingle(ShJobSingle):
 	@classmethod
 	def run_file(cls):
 		return None
+
+	def find_status(self):
+		self._queue_children()
+		for job in self._child_jobs:
+			if job.find_status() == self.CRASHED:
+				self._log('{0:s} crashed because {1:s} crashed'.format(self, job), level=3)
+				return self.CRASHED
+		return super(CombiSingle, self).find_status()
 
 	def is_prepared(self):
 		self._queue_children()
@@ -167,7 +176,11 @@ class CombiSingle(ShJobSingle):
 		if self.aggregation_func is None:
 			return self.aggregate(job_results)
 		return self.aggregation_func(job_results)
-
+	
+	# @staticmethod
+	# def pre_summary(self, *args, **kwargs):
+	# 	self._queue_children()
+	
 	def _crash_reason_if_crashed(self, verbosity=0, *args, **kwargs):
 		self._queue_children()
 		completed, crashed = 0, 0

@@ -58,7 +58,7 @@ class SlurmQueue(Queue):
 		"""
 		Get slurm status for current user as a dictionary of properties.
 		"""
-		with popen('squeue --partition {0:s} --user $USER --format \'%A %B %P %T %u %j\''.format(self.partition)) as fh:
+		with popen('squeue --partition {0:s} --user $USER --format \'%A %B %P %T %100j\''.format(self.partition)) as fh:
 			txt = fh.read()
 		parts = [line.split(None, 5) for line in txt.splitlines()[1:]]
 		jobs = []
@@ -66,8 +66,8 @@ class SlurmQueue(Queue):
 			if taskinfo[3] in ('PENDING', 'RUNNING', 'SUSPENDED', 'COMPLETING', 'COMPLETED'):
 				jobs.append({
 					'pid': int(taskinfo[0]),
-					'name': taskinfo[5],
-					'user': taskinfo[4],
+					'name': taskinfo[4],
+					# 'user': taskinfo[4],
 					'queue': taskinfo[2],
 					'node': taskinfo[1],
 					'state': taskinfo[3],
