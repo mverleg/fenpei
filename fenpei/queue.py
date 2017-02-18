@@ -475,12 +475,12 @@ class Queue(object):
 		for job in startable:
 			job._crash_score = 1
 		if restart:
-			self._log('crashed jobs are eligible for restarting', level=3)
+			self._log('crashed jobs are eligible for restarting', level=2)
 			for job in job_status[Job.CRASHED]:
 				job._crash_score = 0
 			startable.extend(job_status[Job.CRASHED])
 		else:
-			self._log('only unstarted jobs will be started', level=3)
+			self._log('only unstarted jobs will be started', level=2)
 		if not self.weight and not self.limit:
 			return startable
 		startable = sorted((job for jb in startable), key=lambda job: job.weight + 2 * job._crash_score, reverse=False)
@@ -488,28 +488,29 @@ class Queue(object):
 		if weight:
 			start_jobs = []
 			running_weight = sum(job.weight for job in job_status[Job.RUNNING])
-			self._log('{0:d} jobs with weight {1:d} already running'.format(len(job_status[Job.RUNNING]), running_weight), level=3)
+			self._log('{0:d} jobs with weight {1:d} already running'.format(len(job_status[Job.RUNNING]), running_weight), level=2)
 			weight_left = weight - running_weight
 			while startable and weight_left > 0:
 				consider_job = startable.pop()
 				if weight_left > consider_job.weight:
 					weight_left -= consider_job.weight
 					start_jobs.append(consider_job)
-			self._log('pre-selecting {0:d} jobs with weight {1:d} to stay under limit of {2:d}'
-				.format(len(start_jobs), sum((job.weight for job in start_jobs), 0), weight), level=3)
+			self._log('pre-selecting {0:d} jobs with weight {1:d} to stay under the weight limit of {2:d}'
+				.format(len(start_jobs), sum((job.weight for job in start_jobs), 0), weight), level=2)
 		else:
 			start_jobs = startable
-			self._log('pre-selecting all {0:d} eligible jobs for starting'.format(len(start_jobs)), level=3)
+			self._log('pre-selecting all {0:d} eligible jobs for starting'.format(len(start_jobs)), level=2)
 		""" Limit the total number of jobs to start. """
 		if limit:
 			# todo: sort jobs by descrending weight
 			running_count = len(job_status[Job.RUNNING])
-			start_count = min(limit - running_count, 0)
-			self._log('starting {0:d} of {1:d} eligible jobs, to stay under limit of {2:d} with {3:d} already running'
-				.format(start_count, len(start_jobs), limit, running_count), level=3)
+			start_count = max(min(limit - running_count, len(start_jobs)), 0)
+			self._log(('starting {0:d} of {1:d} eligible jobs, to stay under the limit of {2:d} '
+				'jobs, with {3:d} already running').format(start_count, len(start_jobs), limit,
+				running_count), level=2)
 			start_jobs = start_jobs[:start_count]
 		else:
-			self.log('keeping {0:d} for starting since no limit was provided'.format(len(start_jobs)), level=3)
+			self.log('keeping {0:d} for starting since no limit was provided'.format(len(start_jobs)), level=2)
 		return start_jobs
 	
 	# def get_jobs_by_weight(self, max_weight):
@@ -657,13 +658,14 @@ class Queue(object):
 		while True:
 			try:
 				status_list = self.get_status()
-
-				txt = '%s - job# %d; weight %d:' % (datetime.now().strftime('%H:%M:%S'), self.running_count(), self.running_weight())
+				running_count = len(status_list[Job.RUNNING])
+				running_weight = sum((job.weight for job in status_list[Job.RUNNING]), 0)
+				txt = '{0:s} - job# {1:d}; weight {2:d}:'.format(datetime.now().strftime('%H:%M:%S'),
+					running_count, running_weight)
 				for status_nr in status_list.keys():
 					job_names = ', '.join(str(job) for job in status_list[status_nr])
 					txt += '\n %3d %-12s %s' % (len(status_list[status_nr]), Job.status_names[status_nr], job_names if len(job_names) <= 40 else job_names[:37] + '...')
 				reprint(txt, lines)
-
 				if not status_list[Job.RUNNING]:
 					nothing_running_count += 1
 				else:
