@@ -11,17 +11,17 @@ class LocalQueue(Queue):
 
 	def all_nodes(self):
 		self.nodes = ['localhost']
-		self._log('nodes: localhost', level = 2)
+		self._log('nodes: localhost', level=2)
 		return True
 
 	def node_availability(self):
 		if not self.nodes:
 			self.all_nodes()
 		self.slots = [10]
-		self._log('availability: localhost', level = 2)
+		self._log('availability: localhost', level=2)
 		return True
 
-	def distribute_jobs(self, jobs = None, max_reject_spree = None):
+	def distribute_jobs(self, jobs=None, max_reject_spree=None):
 		if not self.slots:
 			self.node_availability()
 		if jobs is None:
@@ -29,13 +29,14 @@ class LocalQueue(Queue):
 		self.distribution = {
 			0: jobs
 		}
-		self._log('distribution: all on localhost', level = 2)
+		self._log('distribution: all on localhost', level=2)
+		return self.distribution
 
 	def processes(self, node):
 		"""
 		Get processes on specific node and cache them.
 		"""
-		self._log('loading processes for %s' % node, level = 3)
+		self._log('loading processes for %s' % node, level=3)
 		self.process_list[node] = []
 		outp = run_cmds([
 			'ps ux',

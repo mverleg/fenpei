@@ -40,13 +40,14 @@ class SlurmQueue(Queue):
 	def node_availability(self):
 		raise NotImplementedError('this should not be implemented for %s because the qsub-queue does the distributing' % self.__class__)
 
-	def distribute_jobs(self, jobs = None, max_reject_spree = None):
+	def distribute_jobs(self, jobs=None, max_reject_spree=None):
 		"""
 		Let slurm do the distributing by placing everything in general queue.
 		"""
 		self._log('call to distribute for %d jobs ignored; slurm will do distribution' % len(jobs))
 		self.all_nodes()
 		self.distribution = {0: jobs}
+		return self.distribution
 
 	@lru_cache(10)
 	def test_slurm(self):
@@ -83,7 +84,7 @@ class SlurmQueue(Queue):
 		Get process info from qstat.
 		"""
 		self.test_slurm()
-		self._log('loading processes for %s' % node, level = 3)
+		self._log('loading processes for %s' % node, level=3)
 		return self.get_slurm_stat()
 
 	def stop_job(self, node, pid):

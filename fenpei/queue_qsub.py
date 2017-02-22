@@ -34,13 +34,14 @@ class QsubQueue(Queue):
 	def node_availability(self):
 		raise NotImplementedError('this should not be implemented for %s because the qsub-queue does the distributing' % self.__class__)
 
-	def distribute_jobs(self, jobs = None, max_reject_spree = None):
+	def distribute_jobs(self, jobs=None, max_reject_spree=None):
 		"""
 		Let qsub do the distributing by placing everything in general queue.
 		"""
 		self._log('call to distribute for %d jobs ignored; qsub will do distribution' % len(jobs), level=2)
 		self.all_nodes()
 		self.distribution = {0: jobs}
+		return self.distribution
 
 	@lru_cache(10)
 	def _test_qstat(self):
@@ -87,7 +88,7 @@ class QsubQueue(Queue):
 		Get process info from qstat.
 		"""
 		self._test_qstat()
-		self._log('loading processes for %s' % node, level = 3)
+		self._log('loading processes for %s' % node, level=3)
 		return self._get_qstat()
 
 	def stop_job(self, node, pid):
@@ -123,7 +124,7 @@ class QsubQueue(Queue):
 			' '.join(subcmd),
 		]
 		outp = run_cmds(cmds, queue = self)
-		self._log(cmds[-1], level = 3)
+		self._log(cmds[-1], level=3)
 		if not outp or not outp[1]:
 			raise self.CmdException('job %s could not be started (output is empty)' % job)
 		qid = findall(r'Your job (\d+) \("[^"]+"\) has been submitted', outp[1])[0]

@@ -31,7 +31,7 @@ class Job(object):
 	node = None
 	pid = None
 	status = None
-	''' Set a group_cls to report results together with another class (that has the same output format). '''
+	""" Set a group_cls to report results together with another class (that has the same output format). """
 	group_cls = None
 
 	def __init__(self, name, weight=1, batch_name=None, force_node=None):
@@ -85,7 +85,7 @@ class Job(object):
 		assert self.pid is not None
 		with open('%s/node_pid.job' % self.directory, 'w+') as fh:
 			fh.write('%s\n%s\n%s\n%s' % (self.name, self.node, self.pid, str(time())))
-		self._log('job %s saved' % self, level = 3)
+		self._log('job %s saved' % self, level=3)
 
 	def unsave(self):
 		"""
@@ -95,7 +95,7 @@ class Job(object):
 			remove('%s/node_pid.job' % self.directory)
 		except IOError:
 			pass
-		self._log('job %s save file removed' % self.name, level = 3)
+		self._log('job %s save file removed' % self.name, level=3)
 
 	def load(self):
 		"""
@@ -106,10 +106,10 @@ class Job(object):
 				lines = fh.read().splitlines()
 				self.node = lines[1]
 				self.pid = int(lines[2])
-			self._log('job %s loaded' % self.name, level = 3)
+			self._log('job %s loaded' % self.name, level=3)
 			return True
 		except IOError:
-			self._log('job %s save file not found' % self, level = 3)
+			self._log('job %s save file not found' % self, level=3)
 			return False
 
 	def is_prepared(self):
@@ -193,8 +193,10 @@ class Job(object):
 					if self.is_running():
 						self.kill()
 				else:
-					raise AssertionError(('you are trying to restart a job that is running or completed ({0:}); ' +
-						'use restart (-e) to skip such jobs or -f to overrule this warning').format(self))
+					raise AssertionError(('you are trying to restart a job that is running '
+						'or completed ({0:} run={1:} complete={2:}); use restart (-e) to '
+						'skip such jobs or -f to overrule this warning').format(
+						self, self.is_running(), self.is_complete()))
 		if not self.is_prepared():
 			self.prepare(silent=True)
 
@@ -207,7 +209,7 @@ class Job(object):
 		self.save()
 		if self.is_running():
 			self.STATUS = self.RUNNING
-		self._log('starting %s on %s with pid %s' % (self, self.node, self.pid), level = 2)
+		self._log('starting %s on %s with pid %s' % (self, self.node, self.pid), level=2)
 
 	def start(self, node, *args, **kwargs):
 		"""
@@ -237,10 +239,10 @@ class Job(object):
 		if self.is_running():
 			assert self.node is not None
 			assert self.pid is not None
-			self._log('killing %s: %s on %s' % (self, self.pid, self.node), level = 2)
+			self._log('killing %s: %s on %s' % (self, self.pid, self.node), level=2)
 			self.queue.stop_job(node = self.node, pid = self.pid)
 			return True
-		self._log('job %s not running' % self, level = 3)
+		self._log('job %s not running' % self, level=3)
 		return False
 
 	def cleanup(self, skip_conflicts=False, *args, **kwargs):
@@ -248,9 +250,10 @@ class Job(object):
 			if self.queue is not None and not self.queue.force:
 				if skip_conflicts:
 					return False
-				raise AssertionError('you are trying to clean up a job that is running or completed; ' + \
-					'use -f to force this, or -e to skip these jobs (it could also mean that two ' + \
-					'jobs are use the same name and batchname).')
+				raise AssertionError(('you are trying to clean up a job ({0:s}; run={1:} complete={2:}) '
+					'that is running or completed; use -f to force this, or -e to skip these jobs (it '
+					'could also mean that two jobs are use the same name and batchname).').format(
+					self.name, self.is_running(), self.is_complete()))
 		if self.batch_name is not False and isdir(self.directory):
 			rmtree(self.directory, ignore_errors = True)
 			self._log('cleaned up {0:s}'.format(self), level=2)

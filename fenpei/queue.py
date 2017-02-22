@@ -17,7 +17,7 @@ from functools import partial
 from logging import warning
 from math import ceil
 from os import remove
-from os.path import basename, join
+from os.path import basename, join, exists, isfile
 from random import sample
 from subprocess import PIPE
 from subprocess import Popen
@@ -67,7 +67,7 @@ class Queue(object):
 		self._log('finding nodes')
 		self.nodes = []
 		self.slots = []
-		''' find node ssh adresses and store in self.nodes '''
+		""" find node ssh adresses and store in self.nodes """
 		return True
 
 	def node_availability(self):
@@ -77,23 +77,23 @@ class Queue(object):
 		if self.load_nodes():
 			return False
 		if not len(self.nodes):
-			self._log('no nodes yet; calling all_nodes()', level = 2)
+			self._log('no nodes yet; calling all_nodes()', level=2)
 			self.all_nodes()
 			if not len(self.nodes):
-				self._log('no nodes found; no availability checked', level = 2)
+				self._log('no nodes found; no availability checked', level=2)
 				return
 		self.slots = []
-		self._log('checking node availability', level = 1)
+		self._log('checking node availability', level=1)
 		for node in self.nodes:
 			outps = run_cmds_on(cmds = ['grep \'model name\' /proc/cpuinfo | wc -l', 'uptime'], node = node, queue = self)
 			if len(outps) == 2:
-				''' one slot for every 100% processor available '''
+				""" one slot for every 100% processor available """
 				proc_count = int(outps[0])
 				load_1min = float(outps[1].split()[-3].replace(',', ''))
 				self.slots.append(max(proc_count - load_1min, 0))
-				self._log('%2d slots assigned to %6s - 1min cpu %4d%% on %d processors' % (round(self.slots[-1]), self.short_node_name(node), 100 * load_1min, proc_count), level = 2)
+				self._log('%2d slots assigned to %6s - 1min cpu %4d%% on %d processors' % (round(self.slots[-1]), self.short_node_name(node), 100 * load_1min, proc_count), level=2)
 			else:
-				''' not accessible for some reason '''
+				""" not accessible for some reason """
 				self._log('%s not accessible' % node)
 				self.nodes.remove(node)
 		self._log('found %d idle processors on %d nodes' % (sum(self.slots), len(self.nodes)))
@@ -159,19 +159,19 @@ class Queue(object):
 		if jobs is None:
 			jobs = self.jobs
 		assert len(self.nodes) == len(self.slots)
-		max_reject_spree = 2 * len(self.nodes) if max_reject_spree is None else max_reject_spree
+		# max_reject_spree = 2 * len(self.nodes) if max_reject_spree is None else max_reject_spree
 		self._log('distributing %d jobs with weight %d over %d slots' % (len(jobs), self.total_weight(jobs), sum(self.slots)))
 		def cost(weight_1, slots_1, weight_2, slots_2):
 			return max(weight_1 - slots_1, 0) ** 2 + max(weight_2 - slots_2, 0) ** 2 + slots_1 / max(weight_1, 1) + slots_2 / max(weight_2, 1)
-		''' clear the list '''
+		""" clear the list """
 		distribution = {}
 		for node_nr in range(len(self.nodes)):
 			distribution[node_nr] = []
-		''' random initial job distribution '''
+		""" random initial job distribution """
 		for job in jobs:
 			node_nr = sample(distribution.keys(), 1)[0]
 			distribution[node_nr].append(job)
-		''' repeat switching until nothing favourable is found anymore '''
+		""" repeat switching until nothing favourable is found anymore """
 		reject_spree, steps = 0, 0
 		while reject_spree < 100:
 			node1, node2 = sample(distribution.keys(), 2)
@@ -182,36 +182,37 @@ class Queue(object):
 				item1 = sample(range(len(distribution[node1])), 1)[0]
 				cost_switch = cost_move = None
 				if len(distribution[node2]) > 0:
-					''' compare the cost of switching two items '''
+					""" compare the cost of switching two items """
 					item2 = sample(range(len(distribution[node2])), 1)[0]
 					cost_switch = cost(self.total_weight(distribution[node1]) - distribution[node1][item1].weight + distribution[node2][item2].weight, self.slots[node1],
 									   self.total_weight(distribution[node2]) + distribution[node1][item1].weight - distribution[node2][item2].weight, self.slots[node2])
 				if cost_before > 0:
-					''' compare the cost of moving an item '''
+					""" compare the cost of moving an item """
 					cost_move = cost(self.total_weight(distribution[node1]) - distribution[node1][item1].weight, self.slots[node1],
 									 self.total_weight(distribution[node2]) + distribution[node1][item1].weight, self.slots[node2])
-				''' note that None < X for any X, so this works even if only cost_before has an actual value '''
+				""" note that None < X for any X, so this works even if only cost_before has an actual value """
 				if (cost_switch < cost_before and cost_switch is not None) or (cost_move < cost_before and cost_move is not None):
 					if cost_switch < cost_move and cost_switch is not None:
-						''' switch '''
+						""" switch """
 						tmp = distribution[node1][item1]
 						distribution[node1][item1] = distribution[node2][item2]
 						distribution[node2][item2] = tmp
 					elif cost_move is not None:
-						''' move (move if equal, it's easier after all) '''
+						""" move (move if equal, it's easier after all) """
 						distribution[node2].append(distribution[node1][item1])
 						del distribution[node1][item1]
 					reject_spree = 0
 				else:
-					''' not favorable; don't move '''
+					""" not favorable; don't move """
 					reject_spree += 1
 			else:
-				''' too many empty slots means few rejectsbut lots of iterations, so in itself a sign to stop '''
+				""" too many empty slots means few rejectsbut lots of iterations, so in itself a sign to stop """
 				reject_spree += 0.1
 		self.distribution = distribution
-		''' report results '''
-		self._log('distribution found after %d steps' % steps)
-		self._log(self.text_distribution(distribution), level = 2)
+		""" report results """
+		self._log('distribution found after {0:d} steps'.format(steps))
+		self._log(self.text_distribution(distribution), level=2)
+		return self.distribution
 
 	def text_distribution(self, distribution):
 		"""
@@ -264,7 +265,7 @@ class Queue(object):
 		if node in self.process_time.keys():
 			if time() - self.process_time[node] < 3:
 				return self.process_list[node]
-		self._log('loading processes for %s' % node, level = 3)
+		self._log('loading processes for %s' % node, level=3)
 		self.process_time[node] = time()
 		self.process_list[node] = []
 		outp = run_cmds_on([
@@ -380,18 +381,6 @@ class Queue(object):
 		prepare_count = sum(int(status) for status in statuses)
 		self._log('prepared %d jobs' % prepare_count)
 
-	# def running_count(self):
-	# 	"""
-	# 	How many running jobs.
-	# 	"""
-	# 	return len(self.get_status()[Job.RUNNING])
-	#
-	# def running_weight(self):
-	# 	"""
-	# 	Total weight of running jobs.
-	# 	"""
-	# 	return sum(job.weight for job in self.get_status()[Job.RUNNING])
-
 	def start(self, parallel=None, verbosity=0, *args, **kwargs):
 		"""
 		Calls corresponding functions depending on flags (e.g. -z, -w, -q, -e).
@@ -403,60 +392,16 @@ class Queue(object):
 			restart=self.restart, job_status=job_status)
 		self._log('starting {0:d} jobs with weight {1:d}'.format(
 			len(start_jobs), sum((job.weight for job in start_jobs), 0)), level=2)
-		self.distribute_jobs(jobs=start_jobs)
+		distribution = self.distribute_jobs(jobs=start_jobs)
 		start_cnt = 0
-		for node_nr, jobs in self.distribution.items():
+		for node_nr, jobs in distribution.items():
 			""" Removed parallism here because it made things slower (and more complicated). """
 			for job in jobs:
 				node = self.nodes[node_nr]
 				if job.is_started():
 					job.cleanup(**kwargs)
 				start_cnt += job.start(node, **kwargs)
-				# batch.append((job, self.nodes[node_nr]))
-			# if parallel:
-			# 	statuses = get_pool_light().map(partial(_start_job_on_node, **kwargs), batch)
-			# else:
-			# statuses = map(partial(_start_job_on_node, **kwargs), batch)
-			# start_count = sum(int(status) for status in statuses)
 		self._log('started {0:d} jobs'.format(start_cnt, level=1))
-			# 		self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
-		#
-		# W = float('inf')
-		# if self.limit:
-		# 	W = max(self.limit - self.running_weight(), 0)
-		# 	if verbosity:
-		# 		if not self.weight:
-		# 			self._log('starting jobs with weight %d (no minimum)' % W)
-		# 		elif W < self.weight:
-		# 			self._log('starting jobs with weight %d because of minimum weight %d' % (W, self.weight))
-		# 		else:
-		# 			self._log('starting jobs with weight %d to fill to %d (higher than minimum)' % (W, self.limit))
-		# elif self.weight:
-		# 	W = self.weight
-		# 	self._log('starting jobs with weight %d (by fixed weight)' % self.weight)
-		# self.start_weight(W, parallel=parallel)
-
-	# def start_weight(self, weight, parallel=None, *args, **kwargs):
-	# 	"""
-	# 	(Re)start jobs with an approximation of total weight.
-	# 	"""
-	# 	parallel = self.parallel if parallel is None else parallel
-	# 	parallel = False  # override because it's slow in this case, somehow...
-	# 	batch = []
-	# 	jobs = self.get_jobs_by_weight(weight)
-	# 	if len(jobs):
-	# 		self.distribute_jobs(jobs = jobs)
-	# 		for node_nr, jobs in self.distribution.items():
-	# 			for job in jobs:
-	# 				batch.append((job, self.nodes[node_nr]))
-	# 		if parallel:
-	# 			statuses = get_pool_light().map(partial(_start_job_on_node, **kwargs), batch)
-	# 		else:
-	# 			statuses = map(partial(_start_job_on_node, **kwargs), batch)
-	# 		start_count = sum(int(status) for status in statuses)
-	# 		self._log('(re)started %d jobs' % start_count if self.restart else 'started %d jobs' % start_count)
-	# 	else:
-	# 		self._log('no jobs to restart' if self.restart else 'no jobs to start')
 
 	def select_start_jobs(self, weight, limit, restart, job_status=None):
 		"""
@@ -465,7 +410,6 @@ class Queue(object):
 		:param weight: Total running weight limit.
 		:param limit: Total running count limit.
 		:param restart: Whether crashed jobs should be restarted (at comparable weight, start fresh ones first).
-		:param job_status:
 		:return:
 		"""
 		""" Find jobs with startable status. """
@@ -483,9 +427,9 @@ class Queue(object):
 			self._log('only unstarted jobs will be started', level=2)
 		if not self.weight and not self.limit:
 			return startable
-		startable = sorted((job for jb in startable), key=lambda job: job.weight + 2 * job._crash_score, reverse=False)
+		startable = sorted(startable, key=lambda job: job.weight + 2 * job._crash_score, reverse=False)
 		""" Remove jobs to reach the requested weight. """
-		if weight:
+		if weight is not None:
 			start_jobs = []
 			running_weight = sum(job.weight for job in job_status[Job.RUNNING])
 			self._log('{0:d} jobs with weight {1:d} already running'.format(len(job_status[Job.RUNNING]), running_weight), level=2)
@@ -501,48 +445,19 @@ class Queue(object):
 			start_jobs = startable
 			self._log('pre-selecting all {0:d} eligible jobs for starting'.format(len(start_jobs)), level=2)
 		""" Limit the total number of jobs to start. """
-		if limit:
-			# todo: sort jobs by descrending weight
+		if limit is not None:
 			running_count = len(job_status[Job.RUNNING])
 			start_count = max(min(limit - running_count, len(start_jobs)), 0)
 			self._log(('starting {0:d} of {1:d} eligible jobs, to stay under the limit of {2:d} '
 				'jobs, with {3:d} already running').format(start_count, len(start_jobs), limit,
 				running_count), level=2)
-			start_jobs = start_jobs[:start_count]
+			start_jobs = start_jobs[-start_count:]
+			if start_count == 0:
+				start_jobs = []
+			assert len(start_jobs) <= start_count, 'too many jobs: {0:d} <= {1:d}'.format(len(start_jobs), start_count)
 		else:
 			self.log('keeping {0:d} for starting since no limit was provided'.format(len(start_jobs)), level=2)
 		return start_jobs
-	
-	# def get_jobs_by_weight(self, max_weight):
-	# 	"""
-	# 	Find jobs with an approximation of total weight.
-	# 	"""
-	# 	""" find eligible jobs (in specific order) """
-	# 	job_status = self.get_status()
-	# 	if self.restart:
-	# 		startable = job_status[Job.PREPARED] + job_status[Job.NONE] + job_status[Job.CRASHED]
-	# 	else:
-	# 		startable = job_status[Job.PREPARED] + job_status[Job.NONE]
-	# 	if not startable:
-	# 		self._log('there are no jobs that can be started')
-	# 		return []
-	# 	total_weight = sum(job.weight for job in startable)
-	# 	if not total_weight:
-	# 		""" start only one job """
-	# 		jobs = [startable[0]]
-	# 	elif max_weight > total_weight or max_weight is None:
-	# 		""" start all jobs """
-	# 		jobs = startable
-	# 	else:
-	# 		""" start jobs with specific weight """
-	# 		jobs, current_weight = [], 0
-	# 		startable = sorted(startable, key = lambda item: - item.weight - (10 if item.status == Job.CRASHED else 0))
-	# 		for job in startable:
-	# 			if current_weight + job.weight <= max_weight:
-	# 				jobs.append(job)
-	# 				current_weight += job.weight
-	# 	self._log('starting: ' + ', '.join(job.name for job in jobs), level = 2)
-	# 	return jobs
 
 	def _quota_warning(self):
 		try:
@@ -633,7 +548,7 @@ class Queue(object):
 		"""
 		Show list of statusses.
 		"""
-		self._log('status for %d jobs:' % len(self.jobs), level = 1)
+		self._log('status for %d jobs:' % len(self.jobs), level=1)
 		for status_nr in status_list.keys():
 			if verbosity <= 0:
 				job_names = ' '.join(str(job) for job in status_list[status_nr][:20 ])
@@ -754,7 +669,47 @@ class Queue(object):
 				process.communicate()
 				cmd_count += 1
 		self._log('ran command `{1:s}` for {0:d} jobs'.format(cmd_count, cmd), level=1)
-
+	
+	def filter_jobs(self, arg, jobs):
+		"""
+		Filter jobs by pattern or file, for --jobs argument.
+		"""
+		keep_jobs = []
+		if '/' in arg or '\\' in arg:
+			self._log('jobs argument "{0:s}" interpreted as file since it contains / or \\'.format(arg), level=3)
+			assert isfile(arg), '--jobs argument seems to be a file path, but the file does not exist'
+			with open(arg, 'r+') as fh:
+				requested = set(pth.strip() for pth in fh.read().splitlines())
+				if '' in requested: requested.remove('')
+				self._log('filtering jobs by {0:d} names from "{1:s}"'.format(len(requested), arg), level=2)
+				for job in jobs:
+					if job.name in requested:
+						keep_jobs.append(job)
+						requested.remove(job.name)
+				# self.jobs = keep
+				unmatched = requested
+		else:
+			parts = arg.split()
+			self._log('{0:d} jobs arguments interpreted as patterns since they do not contains / or \\'
+				.format(len(parts)), level=3)
+			requested = dict((ptrn, 0) for ptrn in parts)
+			self._log('filtering jobs by {0:d} patterns'.format(len(requested)), level=2)
+			if len(jobs) * len(requested) > 500:
+				warning('many jobs and/or many --jobs filters; this may take a while')
+			for job in tuple(jobs):
+				do_keep = False
+				for ptrn in requested.keys():
+					if fnmatch(job.name, ptrn):
+						requested[ptrn] += 1
+						do_keep = True
+				if do_keep:
+					keep_jobs.append(job)
+			unmatched = tuple(ptrn for ptrn, cnt in requested.items() if not cnt)
+		if unmatched:
+			raise ValueError('Specifically requested job(s) [{0:s}] was/were not found.'
+				.format(', '.join(unmatched)))
+		return keep_jobs
+	
 	def run_argv(self):
 		"""
 		Analyze sys.argv and run commands based on it.
@@ -781,8 +736,8 @@ class Queue(object):
 		parser.add_argument('-c', '--calc', dest='actions', action='append_const', const=self.start, help='start calculating one jobs, or see -z/-w/-q')
 		#parser.add_argument('-b', '--keepcalc', dest='actions', action='append_const', const=None, help='like -c, but keeps checking and filling')
 		# parser.add_argument('-z', '--all', dest='all', action='store_true', help='-c will start all jobs')
-		parser.add_argument('-w', '--weight', dest='weight', action='store', type=int, default=None, help='-c will start jobs with total WEIGHT running')
-		parser.add_argument('-q', '--limit', dest='limit', action='store', type=int, default=None, help='-c will add jobs until a total LIMIT running')
+		parser.add_argument('-w', '--weight', dest='weight', action='store', type=int, default=None, help='-c will start jobs with total weight is running')
+		parser.add_argument('-q', '--limit', dest='limit', action='store', type=int, default=None, help='-c will add jobs until a total amount is running')
 		parser.add_argument('-k', '--kill', dest='actions', action='append_const', const=self.kill, help='terminate the calculation of all the running jobs')
 		parser.add_argument('-r', '--remove', dest='actions', action='append_const', const=self.cleanup, help='clean up all the job files')
 		parser.add_argument('-g', '--fix', dest='actions', action='append_const', const=self.fix, help='fix jobs, check cache etc (e.g. after update)')
@@ -791,7 +746,8 @@ class Queue(object):
 		parser.add_argument('-x', '--result', dest='actions', action='append_const', const=wrap_summary, help='run analysis code to summarize results')
 		parser.add_argument('-t', '--whyfail', dest='actions', action='append_const', const=self.crash_reason, help ='print a list of failed jobs with the reason why they failed')
 		parser.add_argument('-j', '--serial', dest='parallel', action='store_false', help='make job commands (start, fix, etc) serial (parallel is faster but order is inconsistent)')
-		parser.add_argument('--jobs', dest='jobs', action='store', type=str, help='specify by name the jobs to (re)start or use, separated by whitespace, ?*[] patterns allowed')
+		parser.add_argument('--jobs', dest='jobs', action='store', type=str, help=('if argument contains \ or /, it should be a file containing a job name per line; '
+			'otherwise it is a string specifying by name the jobs to (re)start or use, separated by whitespace, ?*[] patterns allowed'))
 		# parser.add_argument('--cmd', dest='cmd', nargs=1, action='store', type=str, help='run shell command in each of the job directories')
 		parser.add_argument('--cmd', dest='actions', nargs=1, action='append', type=wrap_cmd, help='run a shell command in the directories of each job that has a dir ' + \
 			'($NAME/$BATCH/$STATUS if -s); also prep-cmd, run-cmd, comp-cmd, crash-cmd')
@@ -803,21 +759,16 @@ class Queue(object):
 		""" Note that some other options may be in use by subclass queues. """
 		args = parser.parse_args()
 
+		self.show = args.verbosity + 1
+		self.force, self.restart, self.weight, self.limit = \
+			args.force, args.restart, args.weight, args.limit
+
 		""" Handle only specific jobs by deleting the others (not the most clean perhaps, but good enough for the occasional use). """
 		if args.jobs:
-			requested = dict((ptrn, 0) for ptrn in args.jobs.split())
-			for job in tuple(self.jobs):
-				keep = False
-				for ptrn in requested.keys():
-					if fnmatch(job.name, ptrn):
-						requested[ptrn] += 1
-						keep = True
-				if not keep:
-					self.jobs.remove(job)
-			unmatched = tuple(ptrn for ptrn, cnt in requested.items() if not cnt)
-			if unmatched:
-				parser.error('Specifically requested job(s) [{0:s}] was/were not found.'
-					.format(', '.join(unmatched)))
+			try:
+				self.jobs = self.filter_jobs(args.jobs, self.jobs)
+			except ValueError as err:
+				parser.error(str(err))
 
 		if not args.actions:
 			stderr.write('No action selected. Use one or several flags to control actions.\n\n')
@@ -830,10 +781,6 @@ class Queue(object):
 				actions.extend(act)
 			else:
 				actions.append(act)
-
-		self.show = args.verbosity + 1
-		self.force, self.restart, self.weight, self.limit = \
-			args.force, args.restart, args.weight, args.limit
 
 		if not actions and not any((args.availability, args.distribute, self.restart, self.weight, self.limit,)):
 			parser.print_help()
