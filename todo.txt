@@ -8,5 +8,9 @@ Use a template langauge for substitution files, rather than just Python substitu
 
 Make it easy to work with in interactive mode, either the interactive python interpreter or maybe Jupyter notebook
 
+Output should probably have been a swappable class
+- different readers for file formats
+- different sets of output values
+- compute things on-demand
 
 
