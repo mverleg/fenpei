@@ -13,4 +13,6 @@ Output should probably have been a swappable class
 - different sets of output values
 - compute things on-demand
 
+Make parameters such as max proc reserved environment parameters
+
 
