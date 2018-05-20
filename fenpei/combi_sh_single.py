@@ -3,10 +3,11 @@
 A job that represents a series of subjobs whose results should be joined.
 """
 
+from os import stderr
 from copy import copy
 from itertools import product
 from fenpei.job_sh_single import ShJobSingle
-from fenpei.utils import compare_results
+from fenpei.utils import compare_results, ParameterValidationError
 
 
 class CombiSingle(ShJobSingle):
@@ -14,13 +15,13 @@ class CombiSingle(ShJobSingle):
 	#todo: this is kind of a hybrid between a queue and a job, which is undesirable design
 
 	def __init__(self, name, subs, ranges, child_cls, batch_name=None, child_kwargs=None,
-			name_template=None, aggregation_func=None, **kwargs):
+			name_template=None, aggregation_func=None, require_all_valid=True, **kwargs):
 		child_kwargs = child_kwargs or {}
 		self._child_cls = child_cls
 		params = ranges.keys()
 		combis = product(*ranges.values())
 		weight = self._make_children(params, combis, subs, name_template=name_template, name=name,
-			batch_name=batch_name, child_kwargs=child_kwargs)
+			batch_name=batch_name, child_kwargs=child_kwargs, require_all_valid=require_all_valid)
 		sub_range = copy(subs)
 		sub_range.update(ranges)
 		super(CombiSingle, self).__init__(name=name, subs=sub_range, batch_name=batch_name, weight=weight, **kwargs)
@@ -30,7 +31,7 @@ class CombiSingle(ShJobSingle):
 	def get_input(self):
 		return copy(self.input)
 	
-	def _make_children(self, params, combis, subs, name_template, name, batch_name, child_kwargs):
+	def _make_children(self, params, combis, subs, name_template, name, batch_name, child_kwargs, require_all_valid):
 		self._child_jobs = []
 		assert hasattr(combis, '__iter__')
 		weight = 0
@@ -45,9 +46,15 @@ class CombiSingle(ShJobSingle):
 				childname = '_'.join([name, ''] + sorted(nameparts))
 			else:
 				childname = name_template.format(name=name, **childsubs)
-			subjob = self._child_cls(name=childname, subs=childsubs, batch_name=batch_name, **child_kwargs)
-			self._child_jobs.append(subjob)
-			weight += subjob.weight
+			try:
+				subjob = self._child_cls(name=childname, subs=childsubs, batch_name=batch_name, **child_kwargs)
+				self._child_jobs.append(subjob)
+				weight += subjob.weight
+			except ParameterValidationError as err:
+				stderr.write(err.message)
+				if require_all_valid:
+					raise ParameterValidationError(("Combi job {} is invalid because one or more of it's child "
+						"jobs are invalid: {}").format(self, err))
 		return weight
 	
 	def compare_results(self, parameters=('name',), filter=None):

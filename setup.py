@@ -16,7 +16,7 @@ setup(
 	author_email='mdilligaf@gmail.com',
 	license='Revised BSD License (LICENSE.txt)',
 	keywords=[],
-	version='2.5',
+	version='2.6',
 	packages=['fenpei'],
 	include_package_data=True,
 	zip_safe=False,
@@ -32,6 +32,7 @@ setup(
 		'Programming Language :: Python :: 3',
 		'Programming Language :: Python :: 3.4',
 		'Programming Language :: Python :: 3.5',
+		'Programming Language :: Python :: 3.6',
 		'Topic :: Software Development :: Libraries :: Python Modules',
 	],
 	install_requires=[

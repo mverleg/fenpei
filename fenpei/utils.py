@@ -6,9 +6,16 @@ from tempfile import gettempdir
 #from threading import Thread
 from warnings import warn
 from bardeen.system import mkdirp
+from sys import stderr
 from os import environ, chmod
 from os.path import join, expanduser
 from jinja2 import StrictUndefined
+
+
+class ParameterValidationError(Exception):
+	""" This indicates the parameters for a job failed to validate. """
+	def __init__(self, message):
+		self.message = message
 
 
 if 'CALC_DIR' in environ:
@@ -56,7 +63,12 @@ def thread_map(func, data):
 def _make_inst(params, JobCls, default_batch=None):
 	if 'batch_name' not in params and default_batch:
 		params['batch_name'] = default_batch
-	return JobCls(**params)
+	try:
+		return JobCls(**params)
+	except ParameterValidationError as err:
+		# note: the job it responsible for logging what went wrong
+		# stderr.write('skipping job because it does not validate: {} ; problem: {}\n'.format(params, err.message))
+		return None
 
 
 def create_jobs(JobCls, generator, parallel=True, default_batch=None):
@@ -64,10 +76,13 @@ def create_jobs(JobCls, generator, parallel=True, default_batch=None):
 	Create jobs from parameters in parallel.
 	"""
 	if parallel:
-		jobs = get_pool_light().map(partial(_make_inst, JobCls=JobCls, default_batch=default_batch), tuple(generator))
+		try_jobs = get_pool_light().map(partial(_make_inst, JobCls=JobCls, default_batch=default_batch), tuple(generator))
 	else:
-		jobs = list(_make_inst(params, JobCls=JobCls, default_batch=default_batch) for params in generator)
-	return jobs
+		try_jobs = list(_make_inst(params, JobCls=JobCls, default_batch=default_batch) for params in generator)
+	real_jobs = list(job for job in try_jobs if job is not None)
+	if len(real_jobs) < len(try_jobs):
+		stderr.write('skipping {} of {} jobs because of validation errors\n'.format(len(try_jobs) - len(real_jobs), len(try_jobs)))
+	return real_jobs
 
 
 def substitute(text, substitutions, formatter, job=None, filename=None):
