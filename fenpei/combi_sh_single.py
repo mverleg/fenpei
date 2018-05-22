@@ -3,7 +3,7 @@
 A job that represents a series of subjobs whose results should be joined.
 """
 
-from os import stderr
+from sys import stderr
 from copy import copy
 from itertools import product
 from fenpei.job_sh_single import ShJobSingle
