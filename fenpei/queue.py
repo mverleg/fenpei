@@ -696,12 +696,18 @@ class Queue(object):
 			self._log('filtering jobs by {0:d} patterns'.format(len(requested)), level=2)
 			if len(jobs) * len(requested) > 500:
 				warning('many jobs and/or many --jobs filters; this may take a while')
-			for job in requested:
+			for job in jobs:
 				do_keep = False
-				for ptrn in requested.keys():
-					if fnmatch(job.name, ptrn):
-						requested[ptrn] += 1
-						do_keep = True
+				if job.name in requested:
+					# Shortcut without patterns
+					requested[job.name] += 1
+					do_keep = True
+				else:
+					# No literal match, try patterns (slow)
+					for ptrn in requested.keys():
+						if fnmatch(job.name, ptrn):
+							requested[ptrn] += 1
+							do_keep = True
 				if do_keep:
 					keep_jobs.append(job)
 			unmatched = tuple(ptrn for ptrn, cnt in requested.items() if not cnt)
