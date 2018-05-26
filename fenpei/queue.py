@@ -696,7 +696,7 @@ class Queue(object):
 			self._log('filtering jobs by {0:d} patterns'.format(len(requested)), level=2)
 			if len(jobs) * len(requested) > 500:
 				warning('many jobs and/or many --jobs filters; this may take a while')
-			for job in tuple(jobs):
+			for job in requested:
 				do_keep = False
 				for ptrn in requested.keys():
 					if fnmatch(job.name, ptrn):
