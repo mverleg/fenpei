@@ -16,7 +16,7 @@ setup(
 	author_email='mdilligaf@gmail.com',
 	license='Revised BSD License (LICENSE.txt)',
 	keywords=[],
-	version='2.7.0',
+	version='2.7.1',
 	packages=['fenpei'],
 	include_package_data=True,
 	zip_safe=False,
