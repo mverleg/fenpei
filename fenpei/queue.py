@@ -332,6 +332,19 @@ class Queue(object):
 					for p in [k, k+N, k+2*N] if p < len(self.jobs)
 			) + '\n')
 
+	def json_jobs(self, verbosity=0, *args, **kwargs):
+		stdout.write('{\n')
+		for k, job in enumerate(sorted(self.jobs, key=lambda job: job.name)):
+			stdout.write('  {{"batch": {batch:20s}, "name": {name:20s}, "weight": {weight:6d}, "status": {status:10s}}}'.format(
+				batch='"' + (job.batch_name or '') + '"',
+				name='"' + job.name + '"',
+				weight=job.weight,
+				status='"' + job.status_str() + '"',
+			))
+			if k + 1 < len(self.jobs):
+				stdout.write(',\n')
+		stdout.write('\n}\n')
+
 	def run_job(self, job, filepath):
 		"""
 		Start an individual job, specified by a Python file.
@@ -456,7 +469,7 @@ class Queue(object):
 				start_jobs = []
 			assert len(start_jobs) <= start_count, 'too many jobs: {0:d} <= {1:d}'.format(len(start_jobs), start_count)
 		else:
-			self.log('keeping {0:d} for starting since no limit was provided'.format(len(start_jobs)), level=2)
+			self._log('keeping {0:d} for starting since no limit was provided'.format(len(start_jobs)), level=2)
 		return start_jobs
 
 	def _quota_warning(self):
@@ -738,6 +751,7 @@ class Queue(object):
 		parser.add_argument('-a', '--availability', dest='availability', action='store_true', help='list all available nodes and their load (cache reload)')
 		parser.add_argument('-d', '--distribute', dest='distribute', action='store_true', help='distribute the jobs over available nodes')
 		parser.add_argument('-l', '--list', dest='actions', action='append_const', const=self.list_jobs, help='show a list of added jobs')
+		parser.add_argument('--json', dest='actions', action='append_const', const=self.json_jobs, help='print job info in json format')
 		parser.add_argument('-p', '--prepare', dest='actions', action='append_const', const=self.prepare, help='prepare all the jobs')
 		parser.add_argument('-c', '--calc', dest='actions', action='append_const', const=self.start, help='start calculating one jobs, or see -z/-w/-q')
 		#parser.add_argument('-b', '--keepcalc', dest='actions', action='append_const', const=None, help='like -c, but keeps checking and filling')
