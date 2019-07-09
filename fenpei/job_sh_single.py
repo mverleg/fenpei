@@ -5,14 +5,16 @@ Like ShJob, but with one set of substitutions for all files (or None).
 Automatically adds all substitutions as attributes to the job.
 """
 
-from base64 import urlsafe_b64encode
 from collections import OrderedDict
 from copy import copy
 from json import dump, load
 from logging import warning
 from os import remove
 from os.path import join, exists
-from struct import pack
+from pickle import dumps
+
+import xxhash
+
 from fenpei.job_sh import ShJob, extend_substitutions
 from fenpei.shell import run_cmds
 
@@ -63,8 +65,10 @@ class ShJobSingle(ShJob):
 		return tuple(self.substitutions[name] for name in self.parameter_names)
 	
 	def _calc_param_hash(self):
-		param_data = hash(tuple(self.substitutions[nm] for nm in self.parameter_names))
-		return urlsafe_b64encode(pack('!q', param_data)).rstrip('=')
+		h = xxhash.xxh32()
+		for nm in sorted(self.parameter_names):
+			h.update(dumps(self.substitutions[nm]))
+		return h.hexdigest().rstrip('=')
 
 	@property
 	def param_hash(self):

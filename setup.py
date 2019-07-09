@@ -16,7 +16,7 @@ setup(
 	author_email='mdilligaf@gmail.com',
 	license='Revised BSD License (LICENSE.txt)',
 	keywords=[],
-	version='2.7.1',
+	version='2.7.2',
 	packages=['fenpei'],
 	include_package_data=True,
 	zip_safe=False,
@@ -38,5 +38,6 @@ setup(
 	install_requires=[
 		'bardeen',
 		'jinja2',
+		'xxhash',
 	],
 )
